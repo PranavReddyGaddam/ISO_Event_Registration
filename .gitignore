@@ -90,3 +90,7 @@ coverage/
 # Frontend temporary files
 .tmp/
 .temp/
+
+# SSH keys / certificates
+*.pem
+*.ppk
