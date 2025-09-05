@@ -1,0 +1,365 @@
+/**
+ * Dashboard page - React component for event management.
+ */
+
+import React, { useState, useEffect } from 'react';
+import { AttendeeResponse, EventStats, AttendeeFilter, AttendeeFilterParams, ApiStatus, PaginationMeta, PaginatedResponse } from '../types';
+import { useApiClient } from '../hooks/useApiClient';
+import PricingManager from '../components/PricingManager';
+import VolunteerApplicationsManager from '../components/VolunteerApplicationsManager';
+import TabbedTables from '../components/TabbedTables';
+
+const Dashboard: React.FC = () => {
+  const [stats, setStats] = useState<EventStats | null>(null);
+  const [attendees, setAttendees] = useState<AttendeeResponse[]>([]);
+  const [filter, setFilter] = useState<AttendeeFilter>({
+    checked_in: undefined,
+    search: '',
+    limit: 50,
+    offset: 0,
+  });
+  const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
+  const [sortBy, setSortBy] = useState<keyof AttendeeResponse | 'registered_at' | 'checked_in_date' | 'checked_in_time'>('created_at' as any);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showPricingManager, setShowPricingManager] = useState(false);
+  const [showVolunteerApplications, setShowVolunteerApplications] = useState(false);
+  const [volunteerSummary, setVolunteerSummary] = useState<any[] | null>(null);
+  const [attendeesPagination, setAttendeesPagination] = useState<PaginationMeta | null>(null);
+
+  const apiClient = useApiClient();
+
+  useEffect(() => {
+    loadData();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [filter]);
+
+  const loadData = async () => {
+    setStatus(ApiStatus.LOADING);
+    setError(null);
+
+    try {
+      // Clean filter parameters to avoid sending undefined as string
+      const cleanFilter: AttendeeFilterParams = {
+        search: filter.search || '',
+        limit: filter.limit || 50,
+        offset: filter.offset || 0,
+        ...(filter.checked_in !== undefined && { checked_in: filter.checked_in })
+      };
+
+      const [statsData, attendeesData, volunteersData] = await Promise.all([
+        apiClient.get<EventStats>('/api/stats'),
+        apiClient.get<PaginatedResponse<AttendeeResponse>>('/api/attendees', cleanFilter),
+        apiClient.get<any[]>('/api/volunteers/summary')
+      ]);
+
+      setStats(statsData);
+      setAttendees(attendeesData.data);
+      setAttendeesPagination(attendeesData.pagination);
+      setVolunteerSummary(volunteersData);
+      setStatus(ApiStatus.SUCCESS);
+    } catch (error: any) {
+      console.error('Dashboard data loading error:', error);
+      setStatus(ApiStatus.ERROR);
+      setError('Failed to load dashboard data. Please try again.');
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setFilter(prev => ({
+      ...prev,
+      search: query,
+      offset: 0
+    }));
+  };
+
+  const toggleSort = (column: keyof AttendeeResponse | 'registered_at' | 'checked_in_date' | 'checked_in_time') => {
+    if (sortBy === column) {
+      setSortDir(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortDir('asc');
+    }
+  };
+
+  const handleFilterChange = (filterType: 'all' | 'checked_in' | 'not_checked_in') => {
+    let checked_in: boolean | undefined;
+    
+    switch (filterType) {
+      case 'checked_in':
+        checked_in = true;
+        break;
+      case 'not_checked_in':
+        checked_in = false;
+        break;
+      default:
+        checked_in = undefined;
+    }
+
+    setFilter(prev => ({
+      ...prev,
+      checked_in,
+      offset: 0
+    }));
+  };
+
+  const handlePageChange = (page: number) => {
+    const newOffset = (page - 1) * (filter.limit || 50);
+    setFilter(prev => ({
+      ...prev,
+      offset: newOffset
+    }));
+  };
+
+  const handlePageSizeChange = (pageSize: number) => {
+    setFilter(prev => ({
+      ...prev,
+      limit: pageSize,
+      offset: 0
+    }));
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  if (status === ApiStatus.LOADING && !stats) {
+    return <LoadingState />;
+  }
+
+  return (
+    <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Event Dashboard</h1>
+          <p className="mt-2 text-sm sm:text-base text-gray-700">Monitor registrations and check-ins in real-time</p>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 bg-red-500/10 backdrop-blur-sm border border-red-400/30 rounded-lg p-4">
+            <div className="flex">
+              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+              </svg>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="mt-1 text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        {stats && <StatsCards stats={stats} />}
+
+        {/* Admin Actions */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 mb-4 sm:mb-6 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+            <div className="flex flex-wrap gap-2 sm:space-x-4 sm:gap-0">
+              <button
+                onClick={() => setShowPricingManager(!showPricingManager)}
+                className="px-4 py-2 rounded-md shadow-sm bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                {showPricingManager ? 'Hide' : 'Manage'} Ticket Pricing
+              </button>
+              <button
+                onClick={() => setShowVolunteerApplications(!showVolunteerApplications)}
+                className="px-4 py-2 rounded-md shadow-sm bg-green-600 text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {showVolunteerApplications ? 'Hide' : 'Manage'} Volunteer Applications
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing Manager */}
+        {showPricingManager && (
+          <PricingManager />
+        )}
+
+        {/* Volunteer Applications Manager */}
+        {showVolunteerApplications && (
+          <div className="mb-6">
+            <VolunteerApplicationsManager onApplicationApproved={loadData} />
+            <div className="mt-4 text-center text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              💡 <strong>Tip:</strong> Once approved, volunteers will automatically appear in the "Volunteers" table below.
+            </div>
+          </div>
+        )}
+
+        {/* Tabbed Tables - Volunteers and Attendees */}
+        <TabbedTables
+          volunteerSummary={volunteerSummary}
+          attendees={attendees}
+          attendeesPagination={attendeesPagination}
+          formatDate={formatDate}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={toggleSort}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
+
+        {/* Filters */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 mb-4 sm:mb-6 p-4 sm:p-6">
+          <div className="flex flex-col space-y-4">
+            {/* Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleFilterChange('all')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filter.checked_in === undefined
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => handleFilterChange('checked_in')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filter.checked_in === true
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                Checked In
+              </button>
+              <button
+                onClick={() => handleFilterChange('not_checked_in')}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filter.checked_in === false
+                    ? 'bg-yellow-600 text-black shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                Not Checked In
+              </button>
+            </div>
+
+            {/* Search and Refresh */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search attendees..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+              </div>
+              <button
+                onClick={loadData}
+                disabled={status === ApiStatus.LOADING}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors whitespace-nowrap"
+              >
+                {status === ApiStatus.LOADING ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// Stats Cards Component
+interface StatsCardsProps {
+  stats: EventStats;
+}
+
+const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+          </svg>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <dl>
+            <dt className="text-sm font-medium text-gray-500 truncate">Total Registered</dt>
+            <dd className="text-3xl font-bold text-gray-900">{stats.total_registered}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+          </svg>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <dl>
+            <dt className="text-sm font-medium text-gray-500 truncate">Revenue (Cash)</dt>
+            <dd className="text-3xl font-bold text-gray-900">${stats.revenue_cash.toFixed(2)}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"></path>
+          </svg>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <dl>
+            <dt className="text-sm font-medium text-gray-500 truncate">Revenue (Zelle)</dt>
+            <dd className="text-3xl font-bold text-gray-900">${stats.revenue_zelle.toFixed(2)}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
+      <div className="flex items-center">
+        <div className="flex-shrink-0">
+          <svg className="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+        <div className="ml-5 w-0 flex-1">
+          <dl>
+            <dt className="text-sm font-medium text-gray-500 truncate">Total Revenue</dt>
+            <dd className="text-3xl font-bold text-gray-900">${stats.total_revenue.toFixed(2)}</dd>
+            <dd className="text-sm text-gray-500">{stats.total_tickets_sold} tickets sold</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+
+// Loading State Component
+const LoadingState: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <svg className="animate-spin h-12 w-12 mx-auto text-blue-600" fill="none" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+      </svg>
+      <p className="mt-4 text-gray-600">Loading dashboard...</p>
+    </div>
+  </div>
+);
+
+export default Dashboard;

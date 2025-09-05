@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Volunteer Event Check-in System with QR Code Generation" />
+    <meta name="keywords" content="event, volunteer, check-in, qr code, registration" />
+    <meta name="author" content="Event Management System" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Title -->
+    <title>Volunteer Event Check-in System</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Event Check-in" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Volunteer Event Check-in System" />
+    <meta property="og:description" content="Modern QR code-based event registration and check-in system" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="/" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Volunteer Event Check-in System" />
+    <meta name="twitter:description" content="Modern QR code-based event registration and check-in system" />
+  </head>
+  <body class="font-sans antialiased">
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+      <div class="text-center">
+        <div class="spinner w-12 h-12 mx-auto mb-4"></div>
+        <p class="text-gray-600 text-lg font-medium">Loading Event Check-in System...</p>
+      </div>
+    </div>
+
+    <!-- Error Container -->
+    <div id="error-container"></div>
+
+    <!-- App Container -->
+    <div id="app" class="min-h-screen">
+      <!-- Navigation -->
+      <div id="app-nav"></div>
+      
+      <!-- Main Content -->
+      <main id="app-content" class="flex-1">
+        <!-- Content will be dynamically loaded here -->
+      </main>
+      
+      <!-- Footer -->
+      <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="container py-6">
+          <div class="text-center text-sm text-gray-500">
+            <p>&copy; 2024 Volunteer Event Check-in System. Built with FastAPI, TypeScript, and Tailwind CSS.</p>
+            <p class="mt-1">
+              <span class="inline-flex items-center">
+                Powered by 
+                <svg class="w-4 h-4 mx-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                Supabase & ConvertKit
+              </span>
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- App Scripts -->
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Hide loading screen when app is ready -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Hide loading screen after a short delay to ensure smooth transition
+        setTimeout(function() {
+          const loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            setTimeout(function() {
+              loadingScreen.style.display = 'none';
+            }, 300);
+          }
+        }, 500);
+      });
+
+      // Handle offline/online status
+      function updateOnlineStatus() {
+        const isOnline = navigator.onLine;
+        if (!isOnline) {
+          const errorContainer = document.getElementById('error-container');
+          if (errorContainer) {
+            errorContainer.innerHTML = `
+              <div class="fixed bottom-4 left-4 right-4 z-50">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-lg max-w-sm mx-auto">
+                  <div class="flex items-center">
+                    <svg class="h-5 w-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    <p class="text-sm text-yellow-800">You're currently offline</p>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          const errorContainer = document.getElementById('error-container');
+          if (errorContainer) {
+            errorContainer.innerHTML = '';
+          }
+        }
+      }
+
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      
+      // Check initial status
+      updateOnlineStatus();
+    </script>
+  </body>
+</html>
