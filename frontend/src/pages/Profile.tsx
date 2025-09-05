@@ -9,7 +9,7 @@ import { UserResponse, ApiStatus } from '../types';
 import ChangePasswordForm from '../components/ChangePasswordForm';
 
 const Profile: React.FC = () => {
-  const { getCurrentUser } = useAuth();
+  const { } = useAuth();
   const apiClient = useApiClient();
   const [userInfo, setUserInfo] = useState<UserResponse | null>(null);
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
@@ -24,8 +24,8 @@ const Profile: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiClient.get('/api/auth/me');
-      setUserInfo(response.data);
+      const user = await apiClient.get<UserResponse>('/api/auth/me');
+      setUserInfo(user);
       setStatus(ApiStatus.SUCCESS);
     } catch (err: any) {
       setStatus(ApiStatus.ERROR);

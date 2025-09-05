@@ -8,7 +8,6 @@ import {
 import { AuthProvider } from "./contexts/AuthContext";
 import { Navigation } from "./components";
 import { ProtectedRoute } from "./components";
-import Squares from "./blocks/Backgrounds/Squares/Squares";
 
 // Import page components
 import Registration from "./pages/Registration";

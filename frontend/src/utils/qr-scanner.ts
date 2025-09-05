@@ -2,7 +2,7 @@
  * QR code scanner utilities with TypeScript.
  */
 
-import { Html5QrcodeScanner, Html5QrcodeScannerConfig } from 'html5-qrcode';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { QRCodeData, QRScannerConfig } from '@/types';
 
 export interface QRScanResult {
@@ -36,7 +36,7 @@ export class QRCodeScanner {
       this.stop();
     }
 
-    const scannerConfig: Html5QrcodeScannerConfig = {
+    const scannerConfig: any = {
       fps: this.config.fps,
       qrbox: {
         width: this.config.qrbox,
