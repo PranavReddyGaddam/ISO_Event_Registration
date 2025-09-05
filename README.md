@@ -1,378 +1,167 @@
-# Volunteer Event Check-in Web App
+# ISO Web App - Volunteer Management System
 
-A comprehensive QR code-based event check-in system built with FastAPI, TypeScript, Tailwind CSS, Supabase, and ConvertKit integration.
+A comprehensive volunteer management system with registration, check-in, and admin dashboard features.
 
-## Features
-
-- **Registration System**: Type-safe attendee registration with form validation
-- **QR Code Generation**: Automatic QR code generation and storage
-- **Email Integration**: Automated email delivery via ConvertKit API
-- **Check-in System**: QR scanner and manual check-in options
-- **Real-time Dashboard**: Live statistics and attendee management
-- **TypeScript**: Fully typed frontend ready for React migration
-- **Responsive Design**: Mobile-first design with Tailwind CSS
-
-## Tech Stack
-
-### Backend
-- **FastAPI**: Modern Python web framework with async support
-- **Supabase**: PostgreSQL database with real-time features
-- **Python QRCode**: QR code generation library
-- **ConvertKit API**: Email marketing integration
-- **Pydantic**: Data validation and serialization
-
-### Frontend
-- **Vite**: Fast build tool and development server
-- **TypeScript**: Strict typing for better development experience
-- **Tailwind CSS**: Utility-first CSS framework
-- **html5-qrcode**: Camera-based QR code scanning
-
-### Database
-- **Supabase PostgreSQL**: Cloud-hosted PostgreSQL database
-- **Row Level Security**: Built-in security policies
-- **Real-time subscriptions**: Live data updates
-- **File Storage**: QR code image hosting
-
-## Project Structure
-
-```
-.
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI application
-│   │   ├── models.py            # Pydantic models
-│   │   ├── config.py            # Configuration settings
-│   │   ├── routers/
-│   │   │   └── attendees.py     # API endpoints
-│   │   └── utils/
-│   │       ├── supabase_client.py    # Supabase integration
-│   │       ├── qr_generator.py       # QR code generation
-│   │       └── kit_email_sender.py   # ConvertKit integration
-│   ├── requirements.txt         # Python dependencies
-│   └── env.example             # Environment variables template
-├── frontend/
-│   ├── src/
-│   │   ├── types/              # TypeScript type definitions
-│   │   ├── utils/              # Utility functions
-│   │   ├── pages/              # Page implementations
-│   │   ├── styles/             # CSS styles
-│   │   └── main.ts             # Application entry point
-│   ├── package.json            # Node.js dependencies
-│   ├── tsconfig.json           # TypeScript configuration
-│   ├── tailwind.config.js      # Tailwind CSS configuration
-│   └── index.html              # HTML entry point
-├── database-schema.sql         # Supabase database schema
-└── README.md                   # This file
-```
-
-## Quick Start
+## 🚀 Quick Start with Docker
 
 ### Prerequisites
+- Docker and Docker Compose installed
+- Git
 
-- Python 3.8+
-- Node.js 16+
-- Supabase account
-- ConvertKit account (for email integration)
+### 1. Clone the Repository
+```bash
+git clone https://github.com/YOUR_USERNAME/ISO_WEB_APP.git
+cd ISO_WEB_APP
+```
 
-### 1. Database Setup
+### 2. Environment Setup
+Create a `.env` file in the root directory with the following variables:
 
-1. Create a new Supabase project at [supabase.com](https://supabase.com)
-2. Copy the database schema from `database-schema.sql`
-3. Run the SQL commands in your Supabase SQL editor
-4. Create a storage bucket named `qr-codes` in the Storage section
-
-### 2. Backend Setup
-
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Copy environment variables:
-   ```bash
-   cp env.example .env
-   ```
-
-5. Update `.env` with your credentials:
-   ```env
-   SUPABASE_URL=your_supabase_project_url
-   SUPABASE_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-   CONVERTKIT_API_KEY=your_convertkit_api_key
-   CONVERTKIT_SECRET_KEY=your_convertkit_secret_key
-   SECRET_KEY=your_secret_key_for_jwt
-   ```
-
-6. Start the development server:
-   ```bash
-   python -m uvicorn app.main:app --reload
-   ```
-
-The API will be available at `http://localhost:8000`
-
-### 3. Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-The frontend will be available at `http://localhost:5173`
-
-## API Endpoints
-
-### Registration
-- `POST /api/register` - Register new attendee and generate QR code
-
-### Check-in
-- `GET /api/attendee/{qr_id}` - Get attendee by QR code ID
-- `POST /api/checkin/{qr_id}` - Check in attendee
-
-### Management
-- `GET /api/attendees` - List all attendees with filters
-- `GET /api/stats` - Get event statistics
-
-### Utility
-- `GET /` - API information
-- `GET /health` - Health check
-
-## Environment Variables
-
-### Backend (.env)
-
-```env
+```bash
 # Supabase Configuration
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 
-# ConvertKit Configuration
-CONVERTKIT_API_KEY=your_convertkit_api_key
-CONVERTKIT_SECRET_KEY=your_convertkit_secret_key
+# Gmail Configuration
+GMAIL_EMAIL=your_gmail_address@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password
 
 # Application Configuration
-ENVIRONMENT=development
-SECRET_KEY=your_secret_key_for_jwt
-CORS_ORIGINS=http://localhost:5173
+ENVIRONMENT=production
+SECRET_KEY=your_very_secure_jwt_secret_key_here
+DEFAULT_VOLUNTEER_PASSWORD=your_secure_default_password
 
 # Event Configuration
-EVENT_NAME=Volunteer Event 2024
+EVENT_NAME=Your Event Name
 EVENT_DATE=2024-01-01
 ```
 
-### Frontend (Optional)
+### 3. Run with Docker Compose
+```bash
+# Start all services
+docker-compose up -d
 
-Create `.env` in the frontend directory:
+# View logs
+docker-compose logs -f
 
-```env
-VITE_API_BASE_URL=http://localhost:8000
+# Stop services
+docker-compose down
 ```
 
-## Database Schema
+### 4. Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
 
-The application uses the following main tables:
+## 🛠️ Manual Setup (Alternative)
 
-### events
-- `id` (UUID, Primary Key)
-- `name` (VARCHAR, Event name)
-- `description` (TEXT, Event description)
-- `event_date` (TIMESTAMPTZ, Event date and time)
-- `location` (VARCHAR, Event location)
-- `max_attendees` (INTEGER, Maximum attendees)
+### Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### attendees
-- `id` (UUID, Primary Key)
-- `event_id` (UUID, Foreign Key to events)
-- `name` (VARCHAR, Attendee name)
-- `email` (VARCHAR, Attendee email)
-- `phone` (VARCHAR, Attendee phone)
-- `qr_code_id` (UUID, Unique QR code identifier)
-- `qr_code_url` (TEXT, URL to QR code image)
-- `is_checked_in` (BOOLEAN, Check-in status)
-- `checked_in_at` (TIMESTAMPTZ, Check-in timestamp)
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## Features in Detail
+## 📋 Features
 
-### QR Code Generation
-- Unique UUID-based QR codes for each attendee
-- Automatic upload to Supabase Storage
-- Styled QR codes with rounded corners
-- Public URLs for email embedding
+### 🔐 Authentication
+- President and Volunteer role-based access
+- JWT token authentication
+- Password change functionality
 
-### Email Integration
-- ConvertKit API integration for reliable email delivery
-- Automated registration confirmation emails
-- QR code attachment in emails
-- Check-in confirmation emails
-- HTML email templates with responsive design
+### 👥 Volunteer Management
+- Volunteer application system
+- Approval/rejection workflow
+- Email notifications
+- Default password assignment
 
-### TypeScript Architecture
-- Strict TypeScript configuration
-- Comprehensive type definitions
-- Type-safe API client
-- Form validation with typed schemas
-- Ready for React/shadcn migration
+### 📝 Registration System
+- Dynamic ticket pricing
+- QR code generation
+- PDF ticket delivery
+- Payment mode tracking (Cash/Zelle)
 
-### Real-time Features
-- Live dashboard updates via Supabase subscriptions
-- Real-time check-in notifications
-- Auto-refreshing statistics
-- Live attendee list updates
+### ✅ Check-in System
+- QR code scanning
+- Real-time check-in tracking
+- Mobile-responsive interface
 
-## Development
+### 📊 Admin Dashboard
+- Real-time statistics
+- Attendee management
+- Volunteer oversight
+- Pricing management
+- Application review
 
-### Backend Development
+## 🏗️ Architecture
 
-1. **Adding New Endpoints**:
-   - Add route functions in `app/routers/attendees.py`
-   - Define Pydantic models in `app/models.py`
-   - Update API documentation
+### Backend (FastAPI)
+- **Framework**: FastAPI with Python 3.11
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: JWT with bcrypt password hashing
+- **Email**: Gmail API integration
+- **File Generation**: PDF and QR code generation
 
-2. **Database Changes**:
-   - Update `database-schema.sql`
-   - Run new migrations in Supabase
-   - Update Supabase client methods
+### Frontend (React + TypeScript)
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Context API
+- **Routing**: React Router
+- **QR Scanning**: html5-qrcode library
 
-3. **Email Templates**:
-   - Modify templates in `app/utils/kit_email_sender.py`
-   - Test with ConvertKit sandbox
+## 🔧 Configuration
 
-### Frontend Development
+### Environment Variables
+All configuration is done through environment variables. See the `.env` example above.
 
-1. **Adding New Pages**:
-   - Create new page class in `src/pages/`
-   - Add route to `src/main.ts`
-   - Update navigation
+### Database Schema
+The application uses Supabase with the following main tables:
+- `users` - User accounts (presidents and volunteers)
+- `attendees` - Event attendees
+- `volunteer_applications` - Volunteer signup applications
+- `ticket_pricing` - Dynamic pricing configuration
+- `events` - Event information
 
-2. **Type Definitions**:
-   - Add types to `src/types/`
-   - Update API client interfaces
-   - Maintain strict typing
+## 📱 Mobile Support
+- Responsive design for all screen sizes
+- Mobile-optimized QR code scanning
+- Touch-friendly interface
 
-3. **Styling**:
-   - Use Tailwind utility classes
-   - Follow component patterns in `src/styles/main.css`
-   - Maintain responsive design
+## 🔒 Security Features
+- Row Level Security (RLS) in Supabase
+- JWT token authentication
+- Password hashing with bcrypt
+- CORS protection
+- Environment variable protection
 
-## Deployment
+## 🚀 Deployment
 
-### Backend Deployment (Railway/Heroku/DigitalOcean)
+### Docker Deployment
+The application is containerized and ready for deployment:
 
-1. Set environment variables in your hosting platform
-2. Install dependencies: `pip install -r requirements.txt`
-3. Start with: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+```bash
+# Production deployment
+docker-compose -f docker-compose.yml up -d
 
-### Frontend Deployment (Vercel/Netlify)
+# With reverse proxy
+docker-compose --profile reverse-proxy up -d
+```
 
-1. Build the project: `npm run build`
-2. Deploy the `dist` folder
-3. Configure redirects for SPA routing
+### Health Checks
+Both frontend and backend include health checks for monitoring.
 
-### Database (Supabase)
+## 📞 Support
+For issues or questions, please create an issue in the GitHub repository.
 
-- Supabase automatically scales
-- Monitor usage in Supabase dashboard
-- Set up backups and monitoring
-
-## Security Considerations
-
-- Row Level Security (RLS) enabled on all tables
-- CORS configured for production domains
-- Input validation with Pydantic models
-- Rate limiting recommended for production
-- HTTPS required for production deployment
-
-## Performance Optimization
-
-- Database indexes on frequently queried columns
-- Image optimization for QR codes
-- CDN recommended for static assets
-- Connection pooling for database
-- Caching for frequently accessed data
-
-## Future Enhancements
-
-### Planned Features
-- React migration with shadcn/ui components
-- Multi-event support
-- Advanced analytics and reporting
-- Mobile app with React Native
-- Badge printing integration
-- Bulk import/export functionality
-
-### Migration to React
-The TypeScript implementation is designed for easy React migration:
-
-1. **Component Structure**: Page classes can be converted to React components
-2. **Type Safety**: All types are React-compatible
-3. **State Management**: State patterns translate to React hooks
-4. **API Integration**: API client works seamlessly with React
-
-## Troubleshooting
-
-### Common Issues
-
-1. **CORS Errors**:
-   - Check `CORS_ORIGINS` in backend `.env`
-   - Ensure frontend URL is included
-
-2. **Database Connection**:
-   - Verify Supabase credentials
-   - Check RLS policies
-   - Ensure database schema is applied
-
-3. **Email Issues**:
-   - Verify ConvertKit API keys
-   - Check ConvertKit account limits
-   - Test with ConvertKit sandbox
-
-4. **QR Scanner Not Working**:
-   - Ensure HTTPS in production
-   - Check camera permissions
-   - Test with different browsers
-
-## Support
-
-For issues and questions:
-
-1. Check the troubleshooting section
-2. Review Supabase and ConvertKit documentation
-3. Check browser console for errors
-4. Verify environment variable configuration
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
----
-
-**Built with ❤️ for the volunteer community**
+## 📄 License
+This project is licensed under the MIT License.

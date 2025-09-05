@@ -11,13 +11,17 @@ services:
     environment:
       - ENVIRONMENT=production
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-      # Add your environment variables here
+      # Supabase Configuration
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - CONVERTKIT_API_KEY=${CONVERTKIT_API_KEY}
-      - CONVERTKIT_SECRET_KEY=${CONVERTKIT_SECRET_KEY}
+      # Gmail Configuration
+      - GMAIL_EMAIL=${GMAIL_EMAIL}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      # Application Configuration
       - SECRET_KEY=${SECRET_KEY}
+      - DEFAULT_VOLUNTEER_PASSWORD=${DEFAULT_VOLUNTEER_PASSWORD}
+      # Event Configuration
       - EVENT_NAME=${EVENT_NAME:-Volunteer Event 2024}
       - EVENT_DATE=${EVENT_DATE:-2024-12-31}
     volumes:
