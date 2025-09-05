@@ -4,7 +4,8 @@
 
 export * from './attendee';
 // Re-export only once to avoid duplicate identifier conflicts
-export type { ApiResponse, ApiError, ValidationError, ApiValidationError, HttpMethod, ApiRequestConfig, ApiClientConfig, ApiStatus, ApiState } from './api';
+export type { ApiResponse, ApiError, ValidationError, ApiValidationError, HttpMethod, ApiRequestConfig, ApiClientConfig, ApiState } from './api';
+export { ApiStatus } from './api';
 export * from './auth';
 
 // Global app types
