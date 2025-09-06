@@ -9,7 +9,7 @@ A comprehensive volunteer management system with registration, check-in, and adm
 - Git
 
 ### 1. Clone the Repository
-```bash
+   ```bash
 git clone https://github.com/YOUR_USERNAME/ISO_WEB_APP.git
 cd ISO_WEB_APP
 ```
@@ -17,7 +17,7 @@ cd ISO_WEB_APP
 ### 2. Environment Setup
 Create a `.env` file in the root directory with the following variables:
 
-```bash
+   ```bash
 # Supabase Configuration
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_anon_key

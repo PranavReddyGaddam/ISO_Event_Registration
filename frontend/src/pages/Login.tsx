@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserLogin, UserRole, ApiStatus } from '../types';
+import { UserLogin, ApiStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import VolunteerSignupForm from '../components/VolunteerSignupForm';
 
@@ -16,7 +16,6 @@ const Login: React.FC = () => {
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [showSignupForm, setShowSignupForm] = useState(false);
 
   const { login, isAuthenticated, getCurrentUser } = useAuth();
@@ -29,14 +28,6 @@ const Login: React.FC = () => {
     }
   }, [isAuthenticated, getCurrentUser, navigate]);
 
-  const handleRoleSelect = (role: UserRole) => {
-    setSelectedRole(role);
-    // Clear form data when role is selected
-    setFormData({
-      email: '',
-      password: ''
-    });
-  };
 
   const handleInputChange = (field: keyof UserLogin, value: string) => {
     setFormData(prev => ({
@@ -77,48 +68,6 @@ const Login: React.FC = () => {
           </p>
         </div>
 
-        {/* Role Selection */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4 sm:mb-6">
-          <button 
-            type="button"
-            onClick={() => handleRoleSelect(UserRole.PRESIDENT)}
-            className={`flex flex-col items-center p-3 sm:p-4 border-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-white/60 ${
-              selectedRole === UserRole.PRESIDENT 
-                ? 'border-white/70 bg-white/10 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.2)]' 
-                : 'border-white/30 bg-white/5 hover:border-white/60 backdrop-blur-sm'
-            }`}
-          >
-            <svg className={`h-6 w-6 sm:h-8 sm:w-8 mb-2 ${
-              selectedRole === UserRole.PRESIDENT ? 'text-white' : 'text-white/70'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span className={`text-xs sm:text-sm font-medium ${
-              selectedRole === UserRole.PRESIDENT ? 'text-white' : 'text-white'
-            }`}>President</span>
-            <span className="text-xs text-white/90">Full Access</span>
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => handleRoleSelect(UserRole.VOLUNTEER)}
-            className={`flex flex-col items-center p-3 sm:p-4 border-2 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-white/60 ${
-              selectedRole === UserRole.VOLUNTEER 
-                ? 'border-white/70 bg-white/10 backdrop-blur-sm shadow-[0_0_0_1px_rgba(255,255,255,0.2)]' 
-                : 'border-white/30 bg-white/5 hover:border-white/60 backdrop-blur-sm'
-            }`}
-          >
-            <svg className={`h-6 w-6 sm:h-8 sm:w-8 mb-2 ${
-              selectedRole === UserRole.VOLUNTEER ? 'text-white' : 'text-white/70'
-            }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-            </svg>
-            <span className={`text-xs sm:text-sm font-medium ${
-              selectedRole === UserRole.VOLUNTEER ? 'text-white' : 'text-white'
-            }`}>Volunteer</span>
-            <span className="text-xs text-white/90">Check-in Only</span>
-          </button>
-        </div>
 
         {/* Login Form */}
         <form className="mt-6 sm:mt-8 space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
