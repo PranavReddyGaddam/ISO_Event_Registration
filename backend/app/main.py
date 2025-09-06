@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from app.config import settings
-from app.routers import attendees, auth, pricing, volunteer_applications
+from app.routers import attendees, auth, events, pricing, volunteer_applications
 from app.utils.supabase_client import supabase_client
 
 # Configure logging
@@ -38,6 +38,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(attendees.router)
+app.include_router(events.router)
 app.include_router(pricing.router)
 app.include_router(volunteer_applications.router)
 
@@ -55,11 +56,18 @@ async def startup_event():
 @app.get("/")
 async def root():
     """Root endpoint."""
+    try:
+        # Get current event from database
+        current_event = await supabase_client.get_current_event()
+        event_name = current_event.get("name", settings.event_name) if current_event else settings.event_name
+    except:
+        event_name = settings.event_name
+    
     return JSONResponse({
         "message": "Volunteer Event Check-in API",
         "version": "1.0.0",
         "docs": "/api/docs",
-        "event": settings.event_name,
+        "event": event_name,
         "status": "active"
     })
 

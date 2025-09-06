@@ -7,6 +7,7 @@ export * from './attendee';
 export type { ApiResponse, ApiError, ValidationError, ApiValidationError, HttpMethod, ApiRequestConfig, ApiClientConfig, ApiState } from './api';
 export { ApiStatus } from './api';
 export * from './auth';
+export * from './event';
 
 // Global app types
 export interface AppConfig {

@@ -60,6 +60,15 @@ class SupabaseClient:
             logger.error(f"Error creating attendee: {e}")
             raise
     
+    async def get_current_event(self) -> Optional[Dict[str, Any]]:
+        """Get the current active event."""
+        try:
+            response = self.client.table("events").select("*").order("created_at", desc=True).limit(1).execute()
+            return response.data[0] if response.data else None
+        except Exception as e:
+            logger.error(f"Error getting current event: {e}")
+            return None
+
     async def create_default_event(self) -> Optional[Dict[str, Any]]:
         """Create a default event if none exists."""
         try:
@@ -72,7 +81,9 @@ class SupabaseClient:
                 "name": "Volunteer Event 2024",
                 "description": "Annual volunteer event for community service",
                 "event_date": event_date.isoformat(),
-                "location": "Community Center"
+                "location": "Community Center",
+                "created_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
             }
             
             response = self.client.table("events").insert(event_data).execute()

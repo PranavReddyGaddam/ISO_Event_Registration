@@ -419,18 +419,6 @@ async def get_attendees(
         )
 
 
-@router.get("/events")
-async def get_events():
-    """Get all events."""
-    try:
-        response = supabase_client.client.table("events").select("id", "name", "description", "event_date", "location").execute()
-        return response.data or []
-    except Exception as e:
-        logger.error(f"Error getting events: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve events"
-        )
 
 
 @router.get("/stats", response_model=EventStats)

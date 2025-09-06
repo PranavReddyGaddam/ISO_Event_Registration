@@ -7,6 +7,7 @@ import { AttendeeResponse, EventStats, AttendeeFilter, AttendeeFilterParams, Api
 import { useApiClient } from '../hooks/useApiClient';
 import PricingManager from '../components/PricingManager';
 import VolunteerApplicationsManager from '../components/VolunteerApplicationsManager';
+import EventManager from '../components/EventManager';
 import TabbedTables from '../components/TabbedTables';
 
 const Dashboard: React.FC = () => {
@@ -25,6 +26,7 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showPricingManager, setShowPricingManager] = useState(false);
   const [showVolunteerApplications, setShowVolunteerApplications] = useState(false);
+  const [showEventManager, setShowEventManager] = useState(false);
   const [volunteerSummary, setVolunteerSummary] = useState<any[] | null>(null);
   const [attendeesPagination, setAttendeesPagination] = useState<PaginationMeta | null>(null);
 
@@ -164,6 +166,12 @@ const Dashboard: React.FC = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
             <div className="flex flex-wrap gap-2 sm:space-x-4 sm:gap-0">
               <button
+                onClick={() => setShowEventManager(!showEventManager)}
+                className="px-4 py-2 rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {showEventManager ? 'Hide' : 'Manage'} Event Details
+              </button>
+              <button
                 onClick={() => setShowPricingManager(!showPricingManager)}
                 className="px-4 py-2 rounded-md shadow-sm bg-purple-600 text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
@@ -178,6 +186,13 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Event Manager */}
+        {showEventManager && (
+          <div className="mb-6">
+            <EventManager onEventUpdated={loadData} />
+          </div>
+        )}
 
         {/* Pricing Manager */}
         {showPricingManager && (

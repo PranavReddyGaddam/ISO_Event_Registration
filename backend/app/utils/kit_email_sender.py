@@ -6,6 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
 from app.config import settings
+from app.utils.supabase_client import supabase_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,26 @@ class GmailEmailSender:
         self.password = settings.gmail_app_password
         self.smtp_server = "smtp.gmail.com"
         self.smtp_port = 587
+    
+    async def get_current_event_details(self) -> Dict[str, str]:
+        """Get current event details from database."""
+        try:
+            current_event = await supabase_client.get_current_event()
+            if current_event:
+                return {
+                    "name": current_event.get("name", settings.event_name),
+                    "date": current_event.get("event_date", settings.event_date),
+                    "location": current_event.get("location", "TBD")
+                }
+        except Exception as e:
+            logger.error(f"Error getting current event details: {e}")
+        
+        # Fallback to settings if database fails
+        return {
+            "name": settings.event_name,
+            "date": settings.event_date,
+            "location": "TBD"
+        }
     
     async def send_registration_email(
         self,
@@ -46,8 +67,10 @@ class GmailEmailSender:
         """
         try:
             # Create email content
-            subject = f"Welcome to {settings.event_name} - Your QR Code Inside!"
-            html_content = self.create_registration_email_content(name, qr_code_url, qr_code_id, ticket_quantity, total_price)
+            # Get current event details
+            event_details = await self.get_current_event_details()
+            subject = f"Welcome to {event_details['name']} - Your QR Code Inside!"
+            html_content = self.create_registration_email_content(name, qr_code_url, qr_code_id, ticket_quantity, total_price, event_details)
             
             # Send email
             success = await self._send_email(email, subject, html_content)
@@ -66,7 +89,9 @@ class GmailEmailSender:
     async def send_checkin_confirmation(self, email: str, name: str) -> bool:
         """Send check-in confirmation email."""
         try:
-            subject = f"Check-in Confirmed - {settings.event_name}"
+            # Get current event details
+            event_details = await self.get_current_event_details()
+            subject = f"Check-in Confirmed - {event_details['name']}"
             html_content = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -76,7 +101,7 @@ class GmailEmailSender:
                     </div>
                     <div style="background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
                         <h2>Hi {name},</h2>
-                        <p>Your check-in for <strong>{settings.event_name}</strong> has been confirmed.</p>
+                        <p>Your check-in for <strong>{event_details['name']}</strong> has been confirmed.</p>
                         <p>Thank you for being here!</p>
                         <p>We look forward to a great event together.</p>
                         <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -157,16 +182,25 @@ class GmailEmailSender:
         qr_code_url: str,
         qr_code_id: str,
         ticket_quantity: int = 1,
-        total_price: float = 0.0
+        total_price: float = 0.0,
+        event_details: Dict[str, str] = None
     ) -> str:
         """Create HTML email content for registration confirmation."""
+        # Use provided event details or fallback to settings
+        if event_details is None:
+            event_details = {
+                "name": settings.event_name,
+                "date": settings.event_date,
+                "location": "TBD"
+            }
+        
         return f"""
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Welcome to {settings.event_name}</title>
+            <title>Welcome to {event_details['name']}</title>
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
@@ -181,12 +215,12 @@ class GmailEmailSender:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Welcome to {settings.event_name}!</h1>
+                    <h1>Welcome to {event_details['name']}!</h1>
                     <p>Thank you for registering, {name}!</p>
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>
-                    <p>We're excited to have you join us for {settings.event_name} on {settings.event_date}.</p>
+                    <p>We're excited to have you join us for {event_details['name']} on {event_details['date']}.</p>
                     
                     <div class="info-box">
                         <h4>Ticket Information:</h4>
