@@ -336,7 +336,7 @@ async def checkin_attendee(
         # Check if already checked in
         if attendee.get("is_checked_in", False):
             return CheckInResponse(
-                success=True,
+                success=False,
                 attendee=AttendeeResponse(**attendee),
                 message="Attendee already checked in"
             )
