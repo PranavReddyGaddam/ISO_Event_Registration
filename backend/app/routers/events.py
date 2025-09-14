@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/events", tags=["events"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("", response_model=list[EventResponse], include_in_schema=False)
 @router.get("/", response_model=list[EventResponse])
 async def get_events():
     """Get all events."""
