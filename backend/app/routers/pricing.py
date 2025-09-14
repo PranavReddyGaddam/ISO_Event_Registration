@@ -18,6 +18,12 @@ from app.models.auth import TokenData
 router = APIRouter(prefix="/api/pricing", tags=["pricing"])
 
 
+@router.get("", response_model=List[TicketPricingResponse])
+async def get_all_pricing_tiers(current_user: TokenData = Depends(get_current_president)):
+    """Get all pricing tiers (alias for admin/tiers)."""
+    return await get_admin_pricing_tiers(current_user=current_user)
+
+
 @router.get("/tiers", response_model=TicketPricingInfo)
 async def get_pricing_tiers(event_id: str):
     """Get all pricing tiers for an event."""
@@ -104,10 +110,16 @@ async def calculate_ticket_price(
 
 
 @router.get("/admin/tiers", response_model=List[TicketPricingResponse])
-async def get_admin_pricing_tiers(current_user: TokenData = Depends(get_current_president)):
+async def get_admin_pricing_tiers(
+    event_id: str = None,
+    current_user: TokenData = Depends(get_current_president)
+):
     """Get all pricing tiers for admin management (president only)."""
     try:
-        response = supabase_client.client.table("ticket_pricing").select("*").order("quantity_from").execute()
+        query = supabase_client.client.table("ticket_pricing").select("*")
+        if event_id:
+            query = query.eq("event_id", event_id)
+        response = query.order("quantity_from").execute()
         
         if not response.data:
             return []
