@@ -24,6 +24,51 @@ from app.models.auth import TokenData
 
 router = APIRouter(prefix="/api", tags=["attendees"])
 logger = logging.getLogger(__name__)
+
+@router.get("/volunteers/{volunteer_id}/attendees", response_model=PaginatedResponse[AttendeeResponse])
+async def get_volunteer_attendees(
+    volunteer_id: str,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: TokenData = Depends(get_current_president)
+):
+    """Get all attendees registered by a specific volunteer."""
+    try:
+        # Get attendees created by this volunteer
+        attendees, total_count = await supabase_client.get_attendees_by_volunteer(
+            volunteer_id=volunteer_id,
+            limit=limit,
+            offset=offset
+        )
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
+        current_page = (offset // limit) + 1
+        has_next = offset + limit < total_count
+        has_prev = offset > 0
+        
+        pagination_meta = PaginationMeta(
+            total=total_count,
+            limit=limit,
+            offset=offset,
+            total_pages=total_pages,
+            current_page=current_page,
+            has_next=has_next,
+            has_prev=has_prev
+        )
+        
+        return PaginatedResponse(
+            data=[AttendeeResponse(**attendee) for attendee in attendees],
+            pagination=pagination_meta
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting volunteer attendees: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve volunteer attendees"
+        )
+
 # Volunteers aggregation endpoint
 @router.get("/volunteers/summary")
 async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president)):
@@ -352,6 +397,7 @@ async def checkin_attendee(
 async def get_attendees(
     checked_in: bool = None,
     search: str = None,
+    food_option: str = None,
     limit: int = 50,
     offset: int = 0,
     current_user: TokenData = Depends(get_current_president)
@@ -361,6 +407,7 @@ async def get_attendees(
         attendees, total_count = await supabase_client.get_attendees(
             checked_in=checked_in,
             search=search,
+            food_option=food_option,
             limit=limit,
             offset=offset
         )

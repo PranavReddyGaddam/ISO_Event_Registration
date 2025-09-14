@@ -10,6 +10,7 @@ export interface Attendee {
   ticket_quantity: number;
   total_price: number;
   payment_mode: 'cash' | 'zelle';
+  food_option: 'with_food' | 'without_food';
   qr_code_id: string;
   created_at: string;
   checked_in_at: string | null;
@@ -25,6 +26,7 @@ export interface AttendeeCreate {
   phone: string;
   ticket_quantity: number;
   payment_mode: 'cash' | 'zelle';
+  food_option: 'with_food' | 'without_food';
 }
 
 export interface CheckInRequest {
@@ -40,6 +42,7 @@ export interface CheckInResponse {
 export interface AttendeeFilter {
   checked_in?: boolean;
   search?: string;
+  food_option?: string;
   limit?: number;
   offset?: number;
 }

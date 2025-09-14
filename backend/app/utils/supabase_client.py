@@ -132,6 +132,7 @@ class SupabaseClient:
         self, 
         checked_in: Optional[bool] = None,
         search: Optional[str] = None,
+        food_option: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
     ) -> tuple[List[Dict[str, Any]], int]:
@@ -161,6 +162,10 @@ class SupabaseClient:
                 if checked_in is not None:
                     all_results = [r for r in all_results if r.get("is_checked_in") == checked_in]
                 
+                # Apply food_option filter if specified
+                if food_option is not None:
+                    all_results = [r for r in all_results if r.get("food_option") == food_option]
+                
                 # Sort by created_at desc and apply limit/offset
                 all_results.sort(key=lambda x: x.get("created_at", ""), reverse=True)
                 total_count = len(all_results)
@@ -173,10 +178,29 @@ class SupabaseClient:
             if checked_in is not None:
                 query = query.eq("is_checked_in", checked_in)
             
+            if food_option is not None:
+                query = query.eq("food_option", food_option)
+            
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             return response.data or [], response.count or 0
         except Exception as e:
             logger.error(f"Error getting attendees: {e}")
+            return [], 0
+    
+    async def get_attendees_by_volunteer(
+        self, 
+        volunteer_id: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Get attendees registered by a specific volunteer."""
+        try:
+            query = self.client.table("attendees").select("*", count="exact").eq("created_by", volunteer_id)
+            
+            response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+            return response.data or [], response.count or 0
+        except Exception as e:
+            logger.error(f"Error getting attendees by volunteer: {e}")
             return [], 0
     
     async def get_event_stats(self) -> Dict[str, Any]:

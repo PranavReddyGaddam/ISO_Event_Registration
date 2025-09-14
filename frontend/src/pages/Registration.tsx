@@ -14,7 +14,8 @@ const Registration: React.FC = () => {
     email: '',
     phone: '',
     ticket_quantity: 1,
-    payment_mode: 'cash'
+    payment_mode: 'cash',
+    food_option: 'with_food'
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
@@ -117,7 +118,7 @@ const Registration: React.FC = () => {
       setStatus(ApiStatus.SUCCESS);
       
       // Reset form
-      setFormData({ name: '', email: '', phone: '', ticket_quantity: 1, payment_mode: 'cash' });
+      setFormData({ name: '', email: '', phone: '', ticket_quantity: 1, payment_mode: 'cash', food_option: 'with_food' });
       setSelectedPricing(null);
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -296,8 +297,40 @@ const Registration: React.FC = () => {
                 disabled={status === ApiStatus.LOADING}
               >
                 <option value="cash" className="bg-white text-gray-900">Cash</option>
-                <option value="zelle" className="bg-white text-gray-900">Zelle</option>
+                <option value="zelle" className="bg-white text-gray-900" disabled>Zelle (Coming Soon)</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">
+                Food Option *
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="food_option"
+                    value="with_food"
+                    checked={formData.food_option === 'with_food'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, food_option: e.target.value as 'with_food' | 'without_food' }))}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
+                    disabled={status === ApiStatus.LOADING}
+                  />
+                  <span className="text-sm text-gray-900">With Food</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="food_option"
+                    value="without_food"
+                    checked={formData.food_option === 'without_food'}
+                    onChange={(e) => setFormData(prev => ({ ...prev, food_option: e.target.value as 'with_food' | 'without_food' }))}
+                    className="mr-2 text-blue-600 focus:ring-blue-500"
+                    disabled={status === ApiStatus.LOADING}
+                  />
+                  <span className="text-sm text-gray-900">Without Food</span>
+                </label>
+              </div>
             </div>
 
             {/* Pricing Information */}

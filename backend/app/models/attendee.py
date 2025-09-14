@@ -17,6 +17,9 @@ class AttendeeBase(BaseModel):
     payment_mode: Literal["cash", "zelle"] = Field(
         default="cash", description="Payment mode used by the attendee"
     )
+    food_option: Literal["with_food", "without_food"] = Field(
+        default="with_food", description="Food preference for the attendee"
+    )
     
     @validator("name")
     def validate_name(cls, v: str) -> str:
@@ -40,6 +43,7 @@ class AttendeeBase(BaseModel):
         if v < 1 or v > 20:
             raise ValueError("Ticket quantity must be between 1 and 20")
         return v
+    
 
 
 class AttendeeCreate(AttendeeBase):

@@ -16,6 +16,7 @@ const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<AttendeeFilter>({
     checked_in: undefined,
     search: '',
+    food_option: undefined,
     limit: 50,
     offset: 0,
   });
@@ -29,6 +30,9 @@ const Dashboard: React.FC = () => {
   const [showEventManager, setShowEventManager] = useState(false);
   const [volunteerSummary, setVolunteerSummary] = useState<any[] | null>(null);
   const [attendeesPagination, setAttendeesPagination] = useState<PaginationMeta | null>(null);
+  const [selectedVolunteer, setSelectedVolunteer] = useState<any | null>(null);
+  const [volunteerAttendees, setVolunteerAttendees] = useState<AttendeeResponse[]>([]);
+  const [volunteerAttendeesPagination, setVolunteerAttendeesPagination] = useState<PaginationMeta | null>(null);
 
   const apiClient = useApiClient();
 
@@ -50,7 +54,8 @@ const Dashboard: React.FC = () => {
         search: filter.search || '',
         limit: filter.limit || 50,
         offset: filter.offset || 0,
-        ...(filter.checked_in !== undefined && { checked_in: filter.checked_in })
+        ...(filter.checked_in !== undefined && { checked_in: filter.checked_in }),
+        ...(filter.food_option !== undefined && { food_option: filter.food_option })
       };
 
       const [statsData, attendeesData, volunteersData] = await Promise.all([
@@ -128,6 +133,37 @@ const Dashboard: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const loadVolunteerAttendees = async (volunteerId: string, offset: number = 0) => {
+    try {
+      const response = await apiClient.get<PaginatedResponse<AttendeeResponse>>(
+        `/api/volunteers/${volunteerId}/attendees`,
+        { limit: 50, offset }
+      );
+      setVolunteerAttendees(response.data);
+      setVolunteerAttendeesPagination(response.pagination);
+    } catch (error) {
+      console.error('Failed to load volunteer attendees:', error);
+    }
+  };
+
+  const handleVolunteerClick = async (volunteer: any) => {
+    setSelectedVolunteer(volunteer);
+    await loadVolunteerAttendees(volunteer.volunteer_id);
+  };
+
+  const handleVolunteerAttendeesPageChange = (page: number) => {
+    if (selectedVolunteer) {
+      const newOffset = (page - 1) * 50;
+      loadVolunteerAttendees(selectedVolunteer.volunteer_id, newOffset);
+    }
+  };
+
+  const handleBackToVolunteers = () => {
+    setSelectedVolunteer(null);
+    setVolunteerAttendees([]);
+    setVolunteerAttendeesPagination(null);
   };
 
   if (status === ApiStatus.LOADING && !stats) {
@@ -220,6 +256,12 @@ const Dashboard: React.FC = () => {
           onSort={toggleSort}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
+          selectedVolunteer={selectedVolunteer}
+          volunteerAttendees={volunteerAttendees}
+          volunteerAttendeesPagination={volunteerAttendeesPagination}
+          onVolunteerClick={handleVolunteerClick}
+          onVolunteerAttendeesPageChange={handleVolunteerAttendeesPageChange}
+          onBackToVolunteers={handleBackToVolunteers}
         />
 
         {/* Filters */}
@@ -256,6 +298,26 @@ const Dashboard: React.FC = () => {
                 }`}
               >
                 Not Checked In
+              </button>
+              <button
+                onClick={() => setFilter(prev => ({ ...prev, food_option: prev.food_option === 'with_food' ? undefined : 'with_food', offset: 0 }))}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filter.food_option === 'with_food'
+                    ? 'bg-orange-600 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                With Food
+              </button>
+              <button
+                onClick={() => setFilter(prev => ({ ...prev, food_option: prev.food_option === 'without_food' ? undefined : 'without_food', offset: 0 }))}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filter.food_option === 'without_food'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                }`}
+              >
+                Without Food
               </button>
             </div>
 

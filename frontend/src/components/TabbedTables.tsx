@@ -18,6 +18,14 @@ interface TabbedTablesProps {
   onSort: (column: keyof AttendeeResponse | 'registered_at' | 'checked_in_date' | 'checked_in_time') => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
+  
+  // Volunteer drill-down data
+  selectedVolunteer: any | null;
+  volunteerAttendees: AttendeeResponse[];
+  volunteerAttendeesPagination: PaginationMeta | null;
+  onVolunteerClick: (volunteer: any) => void;
+  onVolunteerAttendeesPageChange: (page: number) => void;
+  onBackToVolunteers: () => void;
 }
 
 const TabbedTables: React.FC<TabbedTablesProps> = ({
@@ -30,6 +38,12 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   onSort,
   onPageChange,
   onPageSizeChange,
+  selectedVolunteer,
+  volunteerAttendees,
+  volunteerAttendeesPagination,
+  onVolunteerClick,
+  onVolunteerAttendeesPageChange,
+  onBackToVolunteers,
 }) => {
   const [activeTab, setActiveTab] = useState<'volunteers' | 'attendees'>('volunteers');
 
@@ -55,6 +69,126 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
       <span className="text-xs">{sortBy === column ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
     </button>
   );
+
+  // If a volunteer is selected, show their attendees
+  if (selectedVolunteer) {
+    return (
+      <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 overflow-hidden">
+        {/* Header with back button */}
+        <div className="px-4 sm:px-6 py-4 border-b border-white/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBackToVolunteers}
+                className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Volunteers
+              </button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedVolunteer.full_name || 'Unnamed Volunteer'}
+                </h3>
+                <p className="text-sm text-gray-600">{selectedVolunteer.email}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Total Attendees</div>
+              <div className="text-2xl font-bold text-gray-900">{selectedVolunteer.total_attendees}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Volunteer Attendees Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {volunteerAttendees.map((attendee) => (
+                <tr key={attendee.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{attendee.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.email}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.phone}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.ticket_quantity}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.payment_mode === 'cash' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {attendee.payment_mode.charAt(0).toUpperCase() + attendee.payment_mode.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.food_option === 'with_food' 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.is_checked_in 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {attendee.is_checked_in ? 'Checked In' : 'Not Checked In'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(attendee.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination for volunteer attendees */}
+        {volunteerAttendeesPagination && volunteerAttendeesPagination.total_pages > 1 && (
+          <div className="px-4 sm:px-6 py-4 border-t border-white/20">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing {volunteerAttendeesPagination.offset + 1} to {Math.min(volunteerAttendeesPagination.offset + volunteerAttendeesPagination.limit, volunteerAttendeesPagination.total)} of {volunteerAttendeesPagination.total} attendees
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onVolunteerAttendeesPageChange(volunteerAttendeesPagination.current_page - 1)}
+                  disabled={!volunteerAttendeesPagination.has_prev}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700">
+                  Page {volunteerAttendeesPagination.current_page} of {volunteerAttendeesPagination.total_pages}
+                </span>
+                <button
+                  onClick={() => onVolunteerAttendeesPageChange(volunteerAttendeesPagination.current_page + 1)}
+                  disabled={!volunteerAttendeesPagination.has_next}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 overflow-hidden">
@@ -104,7 +238,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {volunteerSummary.map((v) => (
-                      <tr key={v.volunteer_id} className="hover:bg-gray-50">
+                      <tr key={v.volunteer_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onVolunteerClick(v)}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.full_name || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.email || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.total_attendees}</td>
@@ -120,7 +254,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
               <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
                   {volunteerSummary.map((v) => (
-                    <div key={v.volunteer_id} className="p-4 bg-white">
+                    <div key={v.volunteer_id} className="p-4 bg-white cursor-pointer hover:bg-gray-50" onClick={() => onVolunteerClick(v)}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="text-sm font-medium text-gray-900">{v.full_name || 'Unnamed Volunteer'}</h3>
