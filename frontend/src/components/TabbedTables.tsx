@@ -26,6 +26,14 @@ interface TabbedTablesProps {
   onVolunteerClick: (volunteer: any) => void;
   onVolunteerAttendeesPageChange: (page: number) => void;
   onBackToVolunteers: () => void;
+  
+  // Email drill-down data
+  selectedEmail: string | null;
+  emailAttendees: AttendeeResponse[];
+  emailAttendeesPagination: PaginationMeta | null;
+  onEmailClick: (email: string) => void;
+  onEmailAttendeesPageChange: (page: number) => void;
+  onBackToAttendees: () => void;
 }
 
 const TabbedTables: React.FC<TabbedTablesProps> = ({
@@ -44,10 +52,15 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   onVolunteerClick,
   onVolunteerAttendeesPageChange,
   onBackToVolunteers,
+  selectedEmail,
+  emailAttendees,
+  emailAttendeesPagination,
+  onEmailClick,
+  onEmailAttendeesPageChange,
+  onBackToAttendees,
 }) => {
   const [activeTab, setActiveTab] = useState<'volunteers' | 'attendees'>('volunteers');
 
-  const formatDateOnly = (ts?: string) => (ts ? new Date(ts).toLocaleDateString() : '-');
   const formatTimeOnly = (ts?: string) => (ts ? new Date(ts).toLocaleTimeString() : '-');
 
   // Sort attendees for display
@@ -190,6 +203,124 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
     );
   }
 
+  // If an email is selected, show their individual registrations
+  if (selectedEmail) {
+    return (
+      <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 overflow-hidden">
+        {/* Header with back button */}
+        <div className="px-4 sm:px-6 py-4 border-b border-white/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBackToAttendees}
+                className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Attendees
+              </button>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Individual Registrations
+                </h3>
+                <p className="text-sm text-gray-600">{selectedEmail}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-600">Total Registrations</div>
+              <div className="text-2xl font-bold text-gray-900">{emailAttendeesPagination?.total || 0}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Email Attendees Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {emailAttendees.map((attendee) => (
+                <tr key={attendee.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{attendee.name}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.phone}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.ticket_quantity}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.payment_mode === 'cash' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {attendee.payment_mode.charAt(0).toUpperCase() + attendee.payment_mode.slice(1)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.food_option === 'with_food' 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      attendee.is_checked_in 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {attendee.is_checked_in ? 'Checked In' : 'Not Checked In'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(attendee.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination for email attendees */}
+        {emailAttendeesPagination && emailAttendeesPagination.total_pages > 1 && (
+          <div className="px-4 sm:px-6 py-4 border-t border-white/20">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing {emailAttendeesPagination.offset + 1} to {Math.min(emailAttendeesPagination.offset + emailAttendeesPagination.limit, emailAttendeesPagination.total)} of {emailAttendeesPagination.total} registrations
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => onEmailAttendeesPageChange(emailAttendeesPagination.current_page - 1)}
+                  disabled={!emailAttendeesPagination.has_prev}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700">
+                  Page {emailAttendeesPagination.current_page} of {emailAttendeesPagination.total_pages}
+                </span>
+                <button
+                  onClick={() => onEmailAttendeesPageChange(emailAttendeesPagination.current_page + 1)}
+                  disabled={!emailAttendeesPagination.has_next}
+                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 overflow-hidden">
       {/* Tab Headers */}
@@ -298,11 +429,12 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Name" column="name"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Email" column="email"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Phone" column="phone"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Payment Mode" column="payment_mode"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Status" column="is_checked_in"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Registered" column="registered_at"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Check-in Date" column="checked_in_date"/></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Tickets" column="total_tickets_per_person"/></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Registrations" column="total_registrations"/></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Summary</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food Summary</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Last Registered" column="registered_at"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Check-in Time" column="checked_in_time"/></th>
                   </tr>
                 </thead>
@@ -318,33 +450,87 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                       <tr key={attendee.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{attendee.name}</div>
-                          <div className="text-sm text-gray-500">{attendee.qr_code_id}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.phone}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attendee.payment_mode === 'cash'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {attendee.payment_mode.toUpperCase()}
-                          </span>
+                          <div className="text-sm text-gray-500">{attendee.phone}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attendee.is_checked_in
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {attendee.is_checked_in ? 'Checked In' : 'Registered'}
-                          </span>
+                          <button
+                            onClick={() => onEmailClick(attendee.email)}
+                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            {attendee.email}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                          {attendee.total_tickets_per_person || attendee.ticket_quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {attendee.total_registrations || 1}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="space-y-1">
+                            {attendee.cash_registrations && attendee.cash_registrations > 0 && (
+                              <div className="text-green-600">
+                                Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
+                              </div>
+                            )}
+                            {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
+                              <div className="text-blue-600">
+                                Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
+                              </div>
+                            )}
+                            {!attendee.cash_registrations && !attendee.zelle_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.payment_mode === 'cash'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {attendee.payment_mode.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="space-y-1">
+                            {attendee.with_food_registrations && attendee.with_food_registrations > 0 && (
+                              <div className="text-orange-600">With Food: {attendee.with_food_registrations}</div>
+                            )}
+                            {attendee.without_food_registrations && attendee.without_food_registrations > 0 && (
+                              <div className="text-purple-600">Without Food: {attendee.without_food_registrations}</div>
+                            )}
+                            {!attendee.with_food_registrations && !attendee.without_food_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.food_option === 'with_food'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}>
+                                {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="space-y-1">
+                            {attendee.checked_in_registrations && attendee.checked_in_registrations > 0 && (
+                              <div className="text-green-600">Checked In: {attendee.checked_in_registrations}</div>
+                            )}
+                            {attendee.total_registrations && attendee.checked_in_registrations && (
+                              <div className="text-gray-600">
+                                Not Checked In: {(attendee.total_registrations - attendee.checked_in_registrations)}
+                              </div>
+                            )}
+                            {!attendee.checked_in_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.is_checked_in
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {attendee.is_checked_in ? 'Checked In' : 'Registered'}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={attendee.created_at}>
                           {formatDate(attendee.created_at)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={attendee.checked_in_at || ''}>
-                          {formatDateOnly(attendee.checked_in_at || undefined)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900" title={attendee.checked_in_at || ''}>
                           {formatTimeOnly(attendee.checked_in_at || undefined)}
@@ -369,47 +555,98 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="text-sm font-medium text-gray-900">{attendee.name}</h3>
-                          <p className="text-xs text-gray-500 mt-1">{attendee.qr_code_id}</p>
+                          <p className="text-xs text-gray-500 mt-1">{attendee.phone}</p>
                         </div>
-                        <div className="flex flex-col space-y-1">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attendee.payment_mode === 'cash'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {attendee.payment_mode.toUpperCase()}
-                          </span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attendee.is_checked_in
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {attendee.is_checked_in ? 'Checked In' : 'Registered'}
-                          </span>
+                        <div className="flex flex-col space-y-1 text-right">
+                          <div className="text-lg font-bold text-gray-900">
+                            {attendee.total_tickets_per_person || attendee.ticket_quantity} tickets
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {attendee.total_registrations || 1} registrations
+                          </div>
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-1 gap-2 text-sm">
                         <div>
                           <span className="text-gray-500">Email:</span>
-                          <span className="ml-2 text-gray-900">{attendee.email}</span>
+                          <button
+                            onClick={() => onEmailClick(attendee.email)}
+                            className="ml-2 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            {attendee.email}
+                          </button>
                         </div>
                         <div>
-                          <span className="text-gray-500">Phone:</span>
-                          <span className="ml-2 text-gray-900">{attendee.phone}</span>
+                          <span className="text-gray-500">Payment Summary:</span>
+                          <div className="ml-2 text-gray-900">
+                            {attendee.cash_registrations && attendee.cash_registrations > 0 && (
+                              <div className="text-green-600">
+                                Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
+                              </div>
+                            )}
+                            {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
+                              <div className="text-blue-600">
+                                Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
+                              </div>
+                            )}
+                            {!attendee.cash_registrations && !attendee.zelle_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.payment_mode === 'cash'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {attendee.payment_mode.toUpperCase()}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500">Registered:</span>
+                          <span className="text-gray-500">Food Summary:</span>
+                          <div className="ml-2 text-gray-900">
+                            {attendee.with_food_registrations && attendee.with_food_registrations > 0 && (
+                              <div className="text-orange-600">With Food: {attendee.with_food_registrations}</div>
+                            )}
+                            {attendee.without_food_registrations && attendee.without_food_registrations > 0 && (
+                              <div className="text-purple-600">Without Food: {attendee.without_food_registrations}</div>
+                            )}
+                            {!attendee.with_food_registrations && !attendee.without_food_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.food_option === 'with_food'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}>
+                                {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Check-in Status:</span>
+                          <div className="ml-2 text-gray-900">
+                            {attendee.checked_in_registrations && attendee.checked_in_registrations > 0 && (
+                              <div className="text-green-600">Checked In: {attendee.checked_in_registrations}</div>
+                            )}
+                            {attendee.total_registrations && attendee.checked_in_registrations && (
+                              <div className="text-gray-600">
+                                Not Checked In: {(attendee.total_registrations - attendee.checked_in_registrations)}
+                              </div>
+                            )}
+                            {!attendee.checked_in_registrations && (
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendee.is_checked_in
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {attendee.is_checked_in ? 'Checked In' : 'Registered'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Last Registered:</span>
                           <span className="ml-2 text-gray-900">{formatDate(attendee.created_at)}</span>
                         </div>
-                        {attendee.checked_in_at && (
-                          <div>
-                            <span className="text-gray-500">Checked In:</span>
-                            <span className="ml-2 text-gray-900">
-                              {formatDateOnly(attendee.checked_in_at)} at {formatTimeOnly(attendee.checked_in_at)}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}

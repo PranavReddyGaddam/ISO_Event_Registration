@@ -69,6 +69,50 @@ async def get_volunteer_attendees(
             detail="Failed to retrieve volunteer attendees"
         )
 
+@router.get("/attendees/by-email/{email}", response_model=PaginatedResponse[AttendeeResponse])
+async def get_attendees_by_email(
+    email: str,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: TokenData = Depends(get_current_president)
+):
+    """Get all individual registrations for a specific email address."""
+    try:
+        # Get all attendees with this email
+        attendees, total_count = await supabase_client.get_attendees_by_email(
+            email=email,
+            limit=limit,
+            offset=offset
+        )
+        
+        # Calculate pagination metadata
+        total_pages = (total_count + limit - 1) // limit if total_count > 0 else 1
+        current_page = (offset // limit) + 1
+        has_next = offset + limit < total_count
+        has_prev = offset > 0
+        
+        pagination_meta = PaginationMeta(
+            total=total_count,
+            limit=limit,
+            offset=offset,
+            total_pages=total_pages,
+            current_page=current_page,
+            has_next=has_next,
+            has_prev=has_prev
+        )
+        
+        return PaginatedResponse(
+            data=[AttendeeResponse(**attendee) for attendee in attendees],
+            pagination=pagination_meta
+        )
+        
+    except Exception as e:
+        logger.error(f"Error getting attendees by email: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve attendee registrations"
+        )
+
 # Volunteers aggregation endpoint
 @router.get("/volunteers/summary")
 async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president)):

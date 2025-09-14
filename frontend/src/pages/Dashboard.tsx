@@ -33,6 +33,9 @@ const Dashboard: React.FC = () => {
   const [selectedVolunteer, setSelectedVolunteer] = useState<any | null>(null);
   const [volunteerAttendees, setVolunteerAttendees] = useState<AttendeeResponse[]>([]);
   const [volunteerAttendeesPagination, setVolunteerAttendeesPagination] = useState<PaginationMeta | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [emailAttendees, setEmailAttendees] = useState<AttendeeResponse[]>([]);
+  const [emailAttendeesPagination, setEmailAttendeesPagination] = useState<PaginationMeta | null>(null);
 
   const apiClient = useApiClient();
 
@@ -166,6 +169,37 @@ const Dashboard: React.FC = () => {
     setVolunteerAttendeesPagination(null);
   };
 
+  const loadEmailAttendees = async (email: string, offset: number = 0) => {
+    try {
+      const response = await apiClient.get<PaginatedResponse<AttendeeResponse>>(
+        `/api/attendees/by-email/${encodeURIComponent(email)}`,
+        { limit: 50, offset }
+      );
+      setEmailAttendees(response.data);
+      setEmailAttendeesPagination(response.pagination);
+    } catch (error) {
+      console.error('Failed to load email attendees:', error);
+    }
+  };
+
+  const handleEmailClick = async (email: string) => {
+    setSelectedEmail(email);
+    await loadEmailAttendees(email);
+  };
+
+  const handleEmailAttendeesPageChange = (page: number) => {
+    if (selectedEmail) {
+      const newOffset = (page - 1) * 50;
+      loadEmailAttendees(selectedEmail, newOffset);
+    }
+  };
+
+  const handleBackToAttendees = () => {
+    setSelectedEmail(null);
+    setEmailAttendees([]);
+    setEmailAttendeesPagination(null);
+  };
+
   if (status === ApiStatus.LOADING && !stats) {
     return <LoadingState />;
   }
@@ -262,6 +296,12 @@ const Dashboard: React.FC = () => {
           onVolunteerClick={handleVolunteerClick}
           onVolunteerAttendeesPageChange={handleVolunteerAttendeesPageChange}
           onBackToVolunteers={handleBackToVolunteers}
+          selectedEmail={selectedEmail}
+          emailAttendees={emailAttendees}
+          emailAttendeesPagination={emailAttendeesPagination}
+          onEmailClick={handleEmailClick}
+          onEmailAttendeesPageChange={handleEmailAttendeesPageChange}
+          onBackToAttendees={handleBackToAttendees}
         />
 
         {/* Filters */}

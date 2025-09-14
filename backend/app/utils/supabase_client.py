@@ -166,10 +166,13 @@ class SupabaseClient:
                 if food_option is not None:
                     all_results = [r for r in all_results if r.get("food_option") == food_option]
                 
-                # Sort by created_at desc and apply limit/offset
-                all_results.sort(key=lambda x: x.get("created_at", ""), reverse=True)
-                total_count = len(all_results)
-                paginated_results = all_results[offset:offset + limit]
+                # Group attendees by person and calculate totals
+                grouped_results = self._group_attendees_by_person(all_results)
+                
+                # Sort by total tickets desc (most tickets first)
+                grouped_results.sort(key=lambda x: x.get("total_tickets_per_person", 0), reverse=True)
+                total_count = len(grouped_results)
+                paginated_results = grouped_results[offset:offset + limit]
                 return paginated_results, total_count
             
             # If no search, use the normal query approach
@@ -181,10 +184,111 @@ class SupabaseClient:
             if food_option is not None:
                 query = query.eq("food_option", food_option)
             
+            response = query.order("created_at", desc=True).execute()
+            attendees = response.data or []
+            
+            # Group attendees by person and calculate totals
+            grouped_attendees = self._group_attendees_by_person(attendees)
+            
+            # Sort by total tickets desc (most tickets first)
+            grouped_attendees.sort(key=lambda x: x.get("total_tickets_per_person", 0), reverse=True)
+            
+            # Apply pagination to grouped results
+            total_count = len(grouped_attendees)
+            paginated_results = grouped_attendees[offset:offset + limit]
+            return paginated_results, total_count
+        except Exception as e:
+            logger.error(f"Error getting attendees: {e}")
+            return [], 0
+    
+    def _group_attendees_by_person(self, attendees: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Group attendees by person (name + email) and calculate totals."""
+        person_groups = {}
+        
+        for attendee in attendees:
+            # Create a unique key for each person
+            person_key = f"{attendee.get('name', '').lower()}_{attendee.get('email', '').lower()}"
+            
+            if person_key not in person_groups:
+                person_groups[person_key] = {
+                    'attendees': [],
+                    'total_tickets': 0,
+                    'total_cash': 0,
+                    'total_zelle': 0,
+                    'cash_count': 0,
+                    'zelle_count': 0,
+                    'with_food_count': 0,
+                    'without_food_count': 0,
+                    'checked_in_count': 0,
+                    'total_count': 0
+                }
+            
+            # Add attendee to group
+            person_groups[person_key]['attendees'].append(attendee)
+            
+            # Calculate totals
+            ticket_qty = attendee.get('ticket_quantity', 0)
+            total_price = attendee.get('total_price', 0)
+            payment_mode = attendee.get('payment_mode', 'cash')
+            food_option = attendee.get('food_option', 'with_food')
+            is_checked_in = attendee.get('is_checked_in', False)
+            
+            person_groups[person_key]['total_tickets'] += ticket_qty
+            person_groups[person_key]['total_count'] += 1
+            
+            if payment_mode == 'cash':
+                person_groups[person_key]['total_cash'] += total_price
+                person_groups[person_key]['cash_count'] += 1
+            else:
+                person_groups[person_key]['total_zelle'] += total_price
+                person_groups[person_key]['zelle_count'] += 1
+            
+            if food_option == 'with_food':
+                person_groups[person_key]['with_food_count'] += 1
+            else:
+                person_groups[person_key]['without_food_count'] += 1
+            
+            if is_checked_in:
+                person_groups[person_key]['checked_in_count'] += 1
+        
+        # Convert to list of grouped attendees
+        grouped_attendees = []
+        for person_key, group_data in person_groups.items():
+            # Use the first attendee as the base record
+            base_attendee = group_data['attendees'][0].copy()
+            
+            # Add calculated fields
+            base_attendee.update({
+                'total_tickets_per_person': group_data['total_tickets'],
+                'total_registrations': group_data['total_count'],
+                'total_cash_amount': group_data['total_cash'],
+                'total_zelle_amount': group_data['total_zelle'],
+                'cash_registrations': group_data['cash_count'],
+                'zelle_registrations': group_data['zelle_count'],
+                'with_food_registrations': group_data['with_food_count'],
+                'without_food_registrations': group_data['without_food_count'],
+                'checked_in_registrations': group_data['checked_in_count'],
+                'all_registrations': group_data['attendees']
+            })
+            
+            grouped_attendees.append(base_attendee)
+        
+        return grouped_attendees
+    
+    async def get_attendees_by_email(
+        self, 
+        email: str,
+        limit: int = 100,
+        offset: int = 0
+    ) -> tuple[List[Dict[str, Any]], int]:
+        """Get all individual registrations for a specific email address."""
+        try:
+            query = self.client.table("attendees").select("*", count="exact").eq("email", email)
+            
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             return response.data or [], response.count or 0
         except Exception as e:
-            logger.error(f"Error getting attendees: {e}")
+            logger.error(f"Error getting attendees by email: {e}")
             return [], 0
     
     async def get_attendees_by_volunteer(

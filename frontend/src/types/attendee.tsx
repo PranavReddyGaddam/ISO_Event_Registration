@@ -16,6 +16,17 @@ export interface Attendee {
   checked_in_at: string | null;
   is_checked_in: boolean;
   qr_code_url?: string;
+  
+  // Grouped view fields (optional - only present in grouped responses)
+  total_tickets_per_person?: number;
+  total_registrations?: number;
+  total_cash_amount?: number;
+  total_zelle_amount?: number;
+  cash_registrations?: number;
+  zelle_registrations?: number;
+  with_food_registrations?: number;
+  without_food_registrations?: number;
+  checked_in_registrations?: number;
 }
 
 export interface AttendeeResponse extends Attendee {}

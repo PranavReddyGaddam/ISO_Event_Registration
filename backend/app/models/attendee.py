@@ -61,6 +61,17 @@ class AttendeeResponse(AttendeeBase):
     is_checked_in: bool = False
     qr_code_url: Optional[str] = None
     
+    # Grouped view fields (optional - only present in grouped responses)
+    total_tickets_per_person: Optional[int] = None
+    total_registrations: Optional[int] = None
+    total_cash_amount: Optional[float] = None
+    total_zelle_amount: Optional[float] = None
+    cash_registrations: Optional[int] = None
+    zelle_registrations: Optional[int] = None
+    with_food_registrations: Optional[int] = None
+    without_food_registrations: Optional[int] = None
+    checked_in_registrations: Optional[int] = None
+    
     class Config:
         from_attributes = True
 
