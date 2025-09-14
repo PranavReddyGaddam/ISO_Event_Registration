@@ -105,17 +105,12 @@ class SupabaseClient:
             return None
     
     async def check_attendee_exists(self, email: str, phone: str = None) -> Optional[Dict[str, Any]]:
-        """Check if an attendee already exists with the given email (phone validation removed)."""
-        try:
-            # Only check for existing attendee with same email
-            email_response = self.client.table("attendees").select("*").eq("email", email).execute()
-            if email_response.data:
-                return email_response.data[0]
-            
-            return None
-        except Exception as e:
-            logger.error(f"Error checking attendee existence: {e}")
-            return None
+        """Check if an attendee already exists with the given email (phone validation removed).
+        
+        Note: This method now always returns None to allow multiple registrations with the same email.
+        """
+        # Allow multiple registrations with the same email - always return None
+        return None
     
     async def update_attendee_checkin(self, qr_code_id: str) -> Optional[Dict[str, Any]]:
         """Update attendee check-in status."""

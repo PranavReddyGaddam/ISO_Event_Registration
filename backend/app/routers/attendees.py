@@ -143,33 +143,8 @@ async def register_attendee(
     Volunteers have normal limitations and cannot register duplicates.
     """
     try:
-        # Check if attendee already exists with same email or phone
-        # Presidents can override duplicate checks, volunteers cannot
-        existing_attendee = await supabase_client.check_attendee_exists(
-            attendee.email, attendee.phone
-        )
-        
-        if existing_attendee and current_user.role.value != "president":
-            # Only volunteers are restricted by duplicate checks
-            # Only check email now (phone validation removed)
-            detail_message = f"An attendee with this email ({attendee.email}) is already registered."
-            
-            raise HTTPException(
-                status_code=409,  # Conflict status code
-                detail={
-                    "message": "Registration already exists",
-                    "details": detail_message,
-                    "existing_attendee": {
-                        "name": existing_attendee["name"],
-                        "email": existing_attendee["email"],
-                        "phone": existing_attendee["phone"],
-                        "registered_at": existing_attendee["created_at"]
-                    }
-                }
-            )
-        elif existing_attendee and current_user.role.value == "president":
-            # Presidents can register duplicates - log this action
-            logger.info(f"President {current_user.email} is registering duplicate attendee: {attendee.email}")
+        # Allow multiple registrations with the same email
+        # No duplicate checking is performed - users can register multiple times with same email
         
         # Get default event ID (assuming single event for now)
         event_response = supabase_client.client.table("events").select("id").limit(1).execute()
