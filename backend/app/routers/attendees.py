@@ -246,8 +246,8 @@ async def register_attendee(
         
         # Calculate ticket pricing using the pricing router logic
         try:
-            # Get pricing tiers from database
-            pricing_response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).order("quantity_from").execute()
+            # Get pricing tiers from database (filter by food option)
+            pricing_response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).eq("is_active", True).eq("food_option", attendee.food_option).order("quantity_from").execute()
             
             if not pricing_response.data:
                 raise HTTPException(
