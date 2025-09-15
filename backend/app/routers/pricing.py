@@ -314,7 +314,7 @@ async def create_default_pricing_tiers(
             {
                 "event_id": event_id,
                 "quantity_from": 1,
-                "quantity_to": 999,
+                "quantity_to": 251,
                 "price_per_ticket": 15.00,
                 "is_active": True,
                 "food_option": "without_food"
@@ -322,7 +322,7 @@ async def create_default_pricing_tiers(
             {
                 "event_id": event_id,
                 "quantity_from": 1,
-                "quantity_to": 999,
+                "quantity_to": 251,
                 "price_per_ticket": 18.00,
                 "is_active": True,
                 "food_option": "with_food"
