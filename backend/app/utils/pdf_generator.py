@@ -56,18 +56,18 @@ class PDFGenerator:
         self.ticket_style = ParagraphStyle(
             'TicketInfo',
             parent=self.styles['Normal'],
-            fontSize=14,
+            fontSize=12,
             spaceAfter=15,
             alignment=TA_CENTER,
             textColor=black
         )
         
-        # Terms and conditions style
+        # Terms and conditions style (smaller to fit on each page)
         self.terms_style = ParagraphStyle(
             'TermsConditions',
             parent=self.styles['Normal'],
-            fontSize=10,
-            spaceAfter=8,
+            fontSize=8,
+            spaceAfter=6,
             alignment=TA_LEFT,
             textColor=black,
             leftIndent=0,
@@ -84,45 +84,18 @@ class PDFGenerator:
             textColor=darkblue
         )
     
-    def _create_terms_and_conditions_page(self) -> List:
-        """Create the terms and conditions page content."""
-        terms_content = []
-        
-        # Add page break to start a new page
-        terms_content.append(PageBreak())
-        
-        # Terms and conditions title
-        terms_content.append(Paragraph("Terms and Conditions", self.terms_title_style))
-        terms_content.append(Spacer(1, 0.3*inch))
-        
-        # Terms and conditions text
-        terms_text = """
-        <b>1.</b> No exchange or refund. Unauthorized sale of tickets is prohibited.<br/><br/>
-        
-        <b>2.</b> ISO reserves the right of admission and entry.<br/><br/>
-        
-        <b>3.</b> Consumption and possession of alcohol and narcotics are strictly prohibited.<br/><br/>
-        
-        <b>4.</b> Everyone must present the QR code received in their email at the time of the event to receive their wristbands.<br/><br/>
-        
-        <b>5.</b> Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.<br/><br/>
-        
-        <b>6.</b> By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.<br/><br/>
-        
-        <b>7.</b> ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.<br/><br/>
-        
-        <b>8.</b> Ticket categories are final and cannot be changed or upgraded after purchase.<br/><br/>
-        
-        <b>9.</b> Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.<br/><br/>
-        
-        <b>10.</b> ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.<br/><br/>
-        
-        <b>11.</b> Terms and conditions are subject to change at the discretion of ISO.
-        """
-        
-        terms_content.append(Paragraph(terms_text, self.terms_style))
-        
-        return terms_content
+    def _get_terms_paragraph(self) -> Paragraph:
+        """Return a single terms and conditions paragraph to place on each page."""
+        terms_text = (
+            "<b>Terms:</b> No exchange/refund; unauthorized sale prohibited. "
+            "ISO reserves right of admission. Alcohol/narcotics prohibited. "
+            "Present QR from email to receive wristbands. Attendance at own risk; "
+            "ISO-SJSU released from related claims. Entry implies consent to photo/video for ISO use. "
+            "Food allergy/diet issues at attendee's risk. Ticket categories are final. "
+            "Prohibited: weapons, sharp objects, outside food/drinks, pro cameras, drones, dangerous items. "
+            "ISO-SJSU not responsible for lost/stolen/damaged belongings. Terms may change at ISO discretion."
+        )
+        return Paragraph(terms_text, self.terms_style)
     
     def generate_qr_tickets_pdf(self, qr_codes_data: List[Dict[str, Any]], event_name: str = "Volunteer Event 2024") -> bytes:
         """
@@ -165,6 +138,9 @@ class PDFGenerator:
                         qr_image.drawHeight = 3*inch
                         qr_image.drawWidth = 3*inch
                         story.append(qr_image)
+                        # QR Code ID directly under QR image
+                        story.append(Spacer(1, 0.15*inch))
+                        story.append(Paragraph(f"<b>QR Code ID:</b> {qr_data['qr_code_id']}", self.ticket_style))
                         story.append(Spacer(1, 0.2*inch))
                     else:
                         logger.error(f"Failed to download QR code: {qr_data['qr_code_url']}")
@@ -172,35 +148,21 @@ class PDFGenerator:
                 except Exception as e:
                     logger.error(f"Error downloading QR code: {e}")
                     story.append(Paragraph("QR Code not available", self.info_style))
-                
+
                 # Attendee information
                 story.append(Paragraph(f"<b>Name:</b> {qr_data['attendee_name']}", self.info_style))
                 story.append(Paragraph(f"<b>Email:</b> {qr_data['attendee_email']}", self.info_style))
                 story.append(Paragraph(f"<b>Phone:</b> {qr_data['attendee_phone']}", self.info_style))
                 story.append(Paragraph(f"<b>Price per ticket:</b> ${qr_data['price_per_ticket']:.2f}", self.info_style))
                 story.append(Spacer(1, 0.2*inch))
-                
-                # QR Code ID
-                story.append(Paragraph(f"<b>QR Code ID:</b> {qr_data['qr_code_id']}", self.ticket_style))
-                story.append(Spacer(1, 0.3*inch))
-                
-                # Instructions
-                instructions = """
-                <b>Instructions:</b><br/>
-                • Present this QR code at the event entrance<br/>
-                • Each QR code can only be used once<br/>
-                • Keep this ticket safe until the event<br/>
-                • Contact us if you have any questions
-                """
-                story.append(Paragraph(instructions, self.info_style))
+
+                # Terms on each page (small font)
+                story.append(self._get_terms_paragraph())
                 
                 # Add page break for next ticket (except for the last one)
                 if i < len(qr_codes_data) - 1:
                     story.append(Spacer(1, 0.5*inch))
-            
-            # Add terms and conditions page
-            terms_content = self._create_terms_and_conditions_page()
-            story.extend(terms_content)
+
             
             # Build PDF
             doc.build(story)

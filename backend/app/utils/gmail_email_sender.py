@@ -390,7 +390,7 @@ class GmailEmailSender:
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>
-                    <p>We're excited to have you join us for {event_details['name']} on {event_details['date']}.</p>
+                    <p>We're excited to have you join us for {event_details['name']} on 10/18/2025.</p>
                     
                     <div class="info-box">
                         <h4>Ticket Information:</h4>
