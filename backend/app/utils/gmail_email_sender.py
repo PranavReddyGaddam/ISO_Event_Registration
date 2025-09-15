@@ -375,7 +375,7 @@ class GmailEmailSender:
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background-color: #3b82f6; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .header {{ background-color: #3b82f6; color: white; padding: 0; text-align: center; border-radius: 8px 8px 0 0; overflow: hidden; }}
                 .content {{ background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }}
                 .qr-code {{ text-align: center; margin: 30px 0; }}
                 .qr-code img {{ max-width: 200px; height: auto; border: 2px solid #e5e7eb; border-radius: 8px; }}
@@ -386,8 +386,7 @@ class GmailEmailSender:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Welcome to {event_details['name']}!</h1>
-                    <p>Thank you for registering, {name}!</p>
+                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>
@@ -444,7 +443,7 @@ class GmailEmailSender:
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background-color: #3b82f6; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .header {{ background-color: #3b82f6; color: white; padding: 0; text-align: center; border-radius: 8px 8px 0 0; overflow: hidden; }}
                 .content {{ background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }}
                 .footer {{ text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }}
                 .info-box {{ background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; }}
@@ -643,8 +642,7 @@ class GmailEmailSender:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Welcome to {event_details['name']}!</h1>
-                    <p>Thank you for registering, {name}!</p>
+                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>
@@ -659,20 +657,9 @@ class GmailEmailSender:
                     <div class="pdf-box">
                         <h3>📄 Your QR Code Tickets</h3>
                         <p>Your QR code tickets have been attached to this email as a PDF file.</p>
-                        <p><strong>Please download and print the PDF</strong> to bring with you to the event.</p>
                         <p>Each ticket contains a unique QR code that will be scanned at check-in.</p>
                     </div>
-                    
-                    <div class="info-box">
-                        <h4>Important Information:</h4>
-                        <ul>
-                            <li>Download and print the attached PDF file</li>
-                            <li>Each QR code can only be used once</li>
-                            <li>Arrive 15 minutes early for check-in</li>
-                            <li>Bring a photo ID along with your printed tickets</li>
-                            <li>Contact us if you have any questions</li>
-                        </ul>
-                    </div>
+            
                     
                     <p>If you can't access the PDF attachment, please contact us immediately.</p>
                     
