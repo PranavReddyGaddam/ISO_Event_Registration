@@ -356,6 +356,9 @@ const Registration: React.FC = () => {
                           ? `${tier.quantity_from} ticket`
                           : `${tier.quantity_from}-${tier.quantity_to} tickets`
                         }
+                        <span className="ml-2 text-xs text-gray-600">
+                          ({tier.food_option === 'with_food' ? 'With Food' : 'Without Food'})
+                        </span>
                       </span>
                       <span className="text-gray-900 font-medium">
                         ${tier.price_per_ticket.toFixed(2)} each
