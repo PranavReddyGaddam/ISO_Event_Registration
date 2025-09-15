@@ -23,7 +23,7 @@ const PricingManager: React.FC = () => {
     setLoading(true);
     try {
       // Get the first available event ID
-      const eventsResponse = await apiClient.get<{id: string, name: string}[]>('/api/attendees/events');
+      const eventsResponse = await apiClient.get<{id: string, name: string}[]>('/api/events');
       if (eventsResponse && eventsResponse.length > 0) {
         const eventId = eventsResponse[0].id;
         setNewTier(prev => ({ ...prev, event_id: eventId }));
