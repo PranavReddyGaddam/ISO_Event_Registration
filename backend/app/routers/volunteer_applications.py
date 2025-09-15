@@ -47,6 +47,7 @@ async def create_volunteer_application(application: VolunteerApplicationCreate):
             "name": application.name,
             "email": application.email,
             "phone": application.phone,
+            "team_role": application.team_role,
             "status": ApplicationStatus.PENDING,
             "created_at": datetime.utcnow().isoformat(),
             "updated_at": datetime.utcnow().isoformat()
@@ -86,6 +87,7 @@ async def create_volunteer_application(application: VolunteerApplicationCreate):
 @router.get("/", response_model=List[VolunteerApplicationResponse])
 async def get_volunteer_applications(
     status: ApplicationStatus = None,
+    team_role: str = None,
     current_user: TokenData = Depends(get_current_president)
 ):
     """Get all volunteer applications (president only)."""
@@ -94,6 +96,8 @@ async def get_volunteer_applications(
         
         if status:
             query = query.eq("status", status.value)
+        if team_role:
+            query = query.eq("team_role", team_role)
         
         query = query.order("created_at", desc=True)
         
@@ -102,6 +106,8 @@ async def get_volunteer_applications(
         
         if status:
             service_query = service_query.eq("status", status.value)
+        if team_role:
+            service_query = service_query.eq("team_role", team_role)
         
         response = service_query.order("created_at", desc=True).execute()
         

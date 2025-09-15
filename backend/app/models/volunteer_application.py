@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
+from typing import Optional, ClassVar, List
 from datetime import datetime
 from enum import Enum
 
@@ -14,6 +14,20 @@ class VolunteerApplicationBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=255, description="Full name of the volunteer")
     email: EmailStr = Field(..., description="Email address of the volunteer")
     phone: str = Field(..., description="Phone number of the volunteer")
+    team_role: Optional[str] = Field(None, description="Team role selected by the applicant/president")
+
+    # Allowed roles (shared across models through Base)
+    ALLOWED_ROLES: ClassVar[List[str]] = [
+        "Marketing Team Member",
+        "Social Media Team Member",
+        "Finance Team Member",
+        "Alumni Team Member",
+        "Events Team Member",
+        "Director",
+        "Secretary",
+        "Vice President",
+        "President",
+    ]
     
     @validator('phone')
     def validate_phone(cls, v):
@@ -21,6 +35,14 @@ class VolunteerApplicationBase(BaseModel):
         digits_only = ''.join(filter(str.isdigit, v))
         if len(digits_only) < 10:
             raise ValueError('Phone number must have at least 10 digits')
+        return v
+
+    @validator('team_role')
+    def validate_team_role(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in cls.ALLOWED_ROLES:
+            raise ValueError('team_role must be one of the predefined roles')
         return v
 
 
@@ -44,11 +66,20 @@ class VolunteerApplicationResponse(VolunteerApplicationBase):
 class VolunteerApplicationUpdate(BaseModel):
     status: ApplicationStatus
     rejection_reason: Optional[str] = None
+    team_role: Optional[str] = None
     
     @validator('rejection_reason')
     def validate_rejection_reason(cls, v, values):
         if values.get('status') == ApplicationStatus.REJECTED and not v:
             raise ValueError('Rejection reason is required when status is rejected')
+        return v
+
+    @validator('team_role')
+    def validate_team_role_update(cls, v):
+        if v is None or v == "":
+            return None
+        if v not in VolunteerApplicationBase.ALLOWED_ROLES:
+            raise ValueError('team_role must be one of the predefined roles')
         return v
 
 

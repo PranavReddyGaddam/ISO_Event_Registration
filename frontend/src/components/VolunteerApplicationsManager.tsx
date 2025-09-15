@@ -3,7 +3,9 @@ import { useApiClient } from '../hooks/useApiClient';
 import { 
   VolunteerApplication, 
   ApplicationStats, 
-  VolunteerApplicationRejection 
+  VolunteerApplicationRejection,
+  TEAM_ROLES,
+  TeamRole
 } from '../types/volunteerApplication';
 
 interface VolunteerApplicationsManagerProps {
@@ -17,12 +19,16 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [showRejectModal, setShowRejectModal] = useState<VolunteerApplication | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [roleFilter, setRoleFilter] = useState<TeamRole | 'all' | ''>('all');
   const [loading, setLoading] = useState(false);
 
   const loadApplications = async () => {
     setLoading(true);
     try {
-      const params = selectedStatus === 'all' ? undefined : { status: selectedStatus };
+      const params: any = selectedStatus === 'all' ? {} : { status: selectedStatus };
+      if (roleFilter && roleFilter !== 'all') {
+        params.team_role = roleFilter;
+      }
       const response = await apiClient.get<VolunteerApplication[]>('/api/volunteer-applications', params);
       setApplications(response);
     } catch (error) {
@@ -44,7 +50,7 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
   useEffect(() => {
     loadApplications();
     loadStats();
-  }, [selectedStatus]);
+  }, [selectedStatus, roleFilter]);
 
   const handleApprove = async (application: VolunteerApplication) => {
     if (!confirm(`Are you sure you want to approve ${application.name}'s volunteer application?`)) {
@@ -128,7 +134,7 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
         </div>
         
         {/* Status Filter - Only show Pending by default */}
-        <div className="flex space-x-2 mt-4 sm:mt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mt-4 sm:mt-0">
           {['pending', 'approved', 'rejected'].map((status) => (
             <button
               key={status}
@@ -142,6 +148,17 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </button>
           ))}
+          {/* Role Filter */}
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+            className="px-3 py-1 bg-white border border-gray-300 rounded text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Roles</option>
+            {TEAM_ROLES.map((role) => (
+              <option key={role} value={role}>{role}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -201,6 +218,7 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
                   <p><span className="font-medium">Email:</span> {application.email}</p>
                   <p><span className="font-medium">Phone:</span> {application.phone}</p>
+                  <p className="sm:col-span-2"><span className="font-medium">Team Role:</span> {application.team_role || 'Unassigned'}</p>
                   <p><span className="font-medium">Applied:</span> {formatDate(application.created_at)}</p>
                   {application.reviewed_at && (
                     <p><span className="font-medium">Reviewed:</span> {formatDate(application.reviewed_at)}</p>
