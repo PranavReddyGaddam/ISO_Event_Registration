@@ -57,7 +57,12 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
   };
 
   const handleSave = async () => {
-    if (!currentEvent) return;
+    console.log('handleSave called', { currentEvent, formData });
+    
+    if (!currentEvent) {
+      console.log('No current event, returning');
+      return;
+    }
 
     setStatus(ApiStatus.LOADING);
     setError(null);
@@ -70,7 +75,10 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
         location: formData.location
       };
 
+      console.log('Sending update request:', { eventId: currentEvent.id, updateData });
       const updatedEvent = await apiClient.put<Event>(`/api/events/${currentEvent.id}`, updateData);
+      console.log('Update successful:', updatedEvent);
+      
       setCurrentEvent(updatedEvent);
       setIsEditing(false);
       setStatus(ApiStatus.SUCCESS);
@@ -229,7 +237,10 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
           {isEditing && (
             <div className="flex space-x-3 pt-4">
               <button
-                onClick={handleSave}
+                onClick={() => {
+                  console.log('Save button clicked');
+                  handleSave();
+                }}
                 disabled={status === ApiStatus.LOADING}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 transition-colors"
               >
