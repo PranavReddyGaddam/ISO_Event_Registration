@@ -93,18 +93,32 @@ async def update_event(
         logger.info(f"Updating event with ID: {event_id}")
         logger.info(f"Update data: {update_data}")
         
-        response = supabase_client.client.table("events").update(update_data).eq("id", event_id).execute()
+        # First check if the event exists
+        check_response = supabase_client.client.table("events").select("id").eq("id", event_id).execute()
         
-        logger.info(f"Supabase response: {response}")
-        
-        if not response.data:
+        if not check_response.data:
             logger.error(f"Event not found in database for ID: {event_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Event not found"
             )
         
-        return response.data[0]
+        # Perform the update
+        response = supabase_client.client.table("events").update(update_data).eq("id", event_id).execute()
+        
+        logger.info(f"Supabase response: {response}")
+        
+        # Get the updated event
+        updated_response = supabase_client.client.table("events").select("*").eq("id", event_id).execute()
+        
+        if not updated_response.data:
+            logger.error(f"Failed to retrieve updated event for ID: {event_id}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to retrieve updated event"
+            )
+        
+        return updated_response.data[0]
     except HTTPException:
         raise
     except Exception as e:
