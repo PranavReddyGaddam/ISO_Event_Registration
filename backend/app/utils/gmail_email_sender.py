@@ -418,6 +418,23 @@ class GmailEmailSender:
                     
                     <p>If you can't access your QR code, show your confirmation email and photo ID at check-in.</p>
                     
+                    <div class="info-box">
+                        <h4>Terms and Conditions:</h4>
+                        <ul style="font-size: 12px; line-height: 1.4;">
+                            <li>No exchange or refund. Unauthorized sale of tickets is prohibited.</li>
+                            <li>ISO reserves the right of admission and entry.</li>
+                            <li>Consumption and possession of alcohol and narcotics are strictly prohibited.</li>
+                            <li>Everyone must present the QR code received in their email at the time of the event to receive their wristbands.</li>
+                            <li>Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.</li>
+                            <li>By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.</li>
+                            <li>ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.</li>
+                            <li>Ticket categories are final and cannot be changed or upgraded after purchase.</li>
+                            <li>Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.</li>
+                            <li>ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.</li>
+                            <li>Terms and conditions are subject to change at the discretion of ISO.</li>
+                        </ul>
+                    </div>
+                    
                     <div class="footer">
                         <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
@@ -671,6 +688,23 @@ class GmailEmailSender:
                     </div>
                     
                     <p>If you can't access the PDF attachment, please contact us immediately.</p>
+                    
+                    <div class="info-box">
+                        <h4>Terms and Conditions:</h4>
+                        <ul style="font-size: 12px; line-height: 1.4;">
+                            <li>No exchange or refund. Unauthorized sale of tickets is prohibited.</li>
+                            <li>ISO reserves the right of admission and entry.</li>
+                            <li>Consumption and possession of alcohol and narcotics are strictly prohibited.</li>
+                            <li>Everyone must present the QR code received in their email at the time of the event to receive their wristbands.</li>
+                            <li>Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.</li>
+                            <li>By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.</li>
+                            <li>ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.</li>
+                            <li>Ticket categories are final and cannot be changed or upgraded after purchase.</li>
+                            <li>Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.</li>
+                            <li>ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.</li>
+                            <li>Terms and conditions are subject to change at the discretion of ISO.</li>
+                        </ul>
+                    </div>
                     
                     <div class="footer">
                         <p>Thank you for volunteering! We look forward to seeing you at the event.</p>

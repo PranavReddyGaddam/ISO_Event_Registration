@@ -308,6 +308,7 @@ async def register_attendee(
                 "email": attendee.email,
                 "phone": attendee.phone,
                 "payment_mode": attendee.payment_mode,
+                "food_option": attendee.food_option,
                 "ticket_quantity": 1,  # Each record represents 1 ticket
                 "total_price": price_per_ticket,
                 "event_id": event_id,

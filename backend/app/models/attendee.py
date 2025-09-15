@@ -172,6 +172,7 @@ class TicketPricingTier(BaseModel):
     quantity_to: int
     price_per_ticket: float
     total_price: float  # Calculated field for display
+    food_option: Literal["with_food", "without_food"] = Field(description="Food option for this pricing tier")
 
 
 class TicketPricingInfo(BaseModel):

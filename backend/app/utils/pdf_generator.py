@@ -5,7 +5,7 @@ import requests
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.colors import black, blue, darkblue
 from typing import List, Dict, Any
@@ -61,6 +61,68 @@ class PDFGenerator:
             alignment=TA_CENTER,
             textColor=black
         )
+        
+        # Terms and conditions style
+        self.terms_style = ParagraphStyle(
+            'TermsConditions',
+            parent=self.styles['Normal'],
+            fontSize=10,
+            spaceAfter=8,
+            alignment=TA_LEFT,
+            textColor=black,
+            leftIndent=0,
+            rightIndent=0
+        )
+        
+        # Terms title style
+        self.terms_title_style = ParagraphStyle(
+            'TermsTitle',
+            parent=self.styles['Heading1'],
+            fontSize=16,
+            spaceAfter=20,
+            alignment=TA_CENTER,
+            textColor=darkblue
+        )
+    
+    def _create_terms_and_conditions_page(self) -> List:
+        """Create the terms and conditions page content."""
+        terms_content = []
+        
+        # Add page break to start a new page
+        terms_content.append(PageBreak())
+        
+        # Terms and conditions title
+        terms_content.append(Paragraph("Terms and Conditions", self.terms_title_style))
+        terms_content.append(Spacer(1, 0.3*inch))
+        
+        # Terms and conditions text
+        terms_text = """
+        <b>1.</b> No exchange or refund. Unauthorized sale of tickets is prohibited.<br/><br/>
+        
+        <b>2.</b> ISO reserves the right of admission and entry.<br/><br/>
+        
+        <b>3.</b> Consumption and possession of alcohol and narcotics are strictly prohibited.<br/><br/>
+        
+        <b>4.</b> Everyone must present the QR code received in their email at the time of the event to receive their wristbands.<br/><br/>
+        
+        <b>5.</b> Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.<br/><br/>
+        
+        <b>6.</b> By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.<br/><br/>
+        
+        <b>7.</b> ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.<br/><br/>
+        
+        <b>8.</b> Ticket categories are final and cannot be changed or upgraded after purchase.<br/><br/>
+        
+        <b>9.</b> Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.<br/><br/>
+        
+        <b>10.</b> ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.<br/><br/>
+        
+        <b>11.</b> Terms and conditions are subject to change at the discretion of ISO.
+        """
+        
+        terms_content.append(Paragraph(terms_text, self.terms_style))
+        
+        return terms_content
     
     def generate_qr_tickets_pdf(self, qr_codes_data: List[Dict[str, Any]], event_name: str = "Volunteer Event 2024") -> bytes:
         """
@@ -135,6 +197,10 @@ class PDFGenerator:
                 # Add page break for next ticket (except for the last one)
                 if i < len(qr_codes_data) - 1:
                     story.append(Spacer(1, 0.5*inch))
+            
+            # Add terms and conditions page
+            terms_content = self._create_terms_and_conditions_page()
+            story.extend(terms_content)
             
             # Build PDF
             doc.build(story)

@@ -40,7 +40,8 @@ async def get_pricing_tiers(event_id: str):
                 quantity_from=tier_data["quantity_from"],
                 quantity_to=tier_data["quantity_to"],
                 price_per_ticket=float(tier_data["price_per_ticket"]),
-                total_price=0  # Will be calculated when needed
+                total_price=0,  # Will be calculated when needed
+                food_option=tier_data["food_option"]
             )
             tiers.append(tier)
         
