@@ -28,8 +28,8 @@ async def get_all_pricing_tiers(current_user: TokenData = Depends(get_current_pr
 async def get_pricing_tiers(event_id: str):
     """Get all pricing tiers for an event."""
     try:
-        # Get pricing tiers from database
-        response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).order("quantity_from").execute()
+        # Get pricing tiers from database (only active ones)
+        response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).eq("is_active", True).order("quantity_from").execute()
         
         if not response.data:
             return TicketPricingInfo(tiers=[], max_tickets=20)
@@ -58,10 +58,10 @@ async def calculate_ticket_price(
     request: TicketCalculationRequest,
     event_id: str
 ):
-    """Calculate ticket price for a given quantity."""
+    """Calculate ticket price for a given quantity and food option."""
     try:
-        # Get pricing tiers from database
-        response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).order("quantity_from").execute()
+        # Get pricing tiers from database (only active ones, filtered by food option)
+        response = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).eq("is_active", True).eq("food_option", request.food_option).order("quantity_from").execute()
         
         if not response.data:
             raise HTTPException(
@@ -290,4 +290,60 @@ async def delete_pricing_tier(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete pricing tier: {str(e)}"
+        )
+
+
+@router.post("/admin/create-default-tiers")
+async def create_default_pricing_tiers(
+    event_id: str,
+    current_user: TokenData = Depends(get_current_president)
+):
+    """Create default pricing tiers for an event (president only)."""
+    try:
+        # Check if default tiers already exist
+        existing_tiers = supabase_client.client.table("ticket_pricing").select("*").eq("event_id", event_id).execute()
+        
+        if existing_tiers.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pricing tiers already exist for this event"
+            )
+        
+        # Create default pricing tiers
+        default_tiers = [
+            {
+                "event_id": event_id,
+                "quantity_from": 1,
+                "quantity_to": 999,
+                "price_per_ticket": 15.00,
+                "is_active": True,
+                "food_option": "without_food"
+            },
+            {
+                "event_id": event_id,
+                "quantity_from": 1,
+                "quantity_to": 999,
+                "price_per_ticket": 18.00,
+                "is_active": True,
+                "food_option": "with_food"
+            }
+        ]
+        
+        # Insert default tiers
+        response = supabase_client.client.table("ticket_pricing").insert(default_tiers).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create default pricing tiers"
+            )
+        
+        return {"message": "Default pricing tiers created successfully", "tiers": response.data}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create default pricing tiers: {str(e)}"
         )

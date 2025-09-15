@@ -10,7 +10,9 @@ const PricingManager: React.FC = () => {
     event_id: '', // Will be set dynamically
     quantity_from: 1,
     quantity_to: 1,
-    price_per_ticket: 0
+    price_per_ticket: 0,
+    is_active: true,
+    food_option: 'without_food'
   });
 
   const apiClient = useApiClient();
@@ -44,7 +46,7 @@ const PricingManager: React.FC = () => {
     }
     try {
       await apiClient.post<TicketPricingResponse>('/api/pricing/admin/tiers', newTier);
-      setNewTier({ event_id: newTier.event_id, quantity_from: 1, quantity_to: 1, price_per_ticket: 0 });
+      setNewTier({ event_id: newTier.event_id, quantity_from: 1, quantity_to: 1, price_per_ticket: 0, is_active: true, food_option: 'without_food' });
       loadPricingTiers();
     } catch (error) {
       console.error('Failed to create pricing tier:', error);
@@ -72,10 +74,44 @@ const PricingManager: React.FC = () => {
     }
   };
 
+  const handleCreateDefaultTiers = async () => {
+    if (!newTier.event_id) {
+      alert('No event found. Please try again.');
+      return;
+    }
+
+    if (window.confirm('This will create default pricing tiers: $15 without food, $18 with food. Continue?')) {
+      setLoading(true);
+      try {
+        await apiClient.post(`/api/pricing/admin/create-default-tiers?event_id=${newTier.event_id}`);
+        alert('Default pricing tiers created successfully!');
+        loadPricingTiers();
+      } catch (error: any) {
+        console.error('Failed to create default pricing tiers:', error);
+        alert(error.response?.data?.detail || 'Failed to create default pricing tiers');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   return (
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 mb-6 p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-4">Ticket Pricing Management</h2>
       
+      {/* Create Default Tiers */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3">Quick Setup</h3>
+        <p className="text-sm text-gray-600 mb-4">Create default pricing tiers: $15 without food, $18 with food</p>
+        <button
+          onClick={handleCreateDefaultTiers}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Creating...' : 'Create Default Tiers'}
+        </button>
+      </div>
+
       {/* Create New Tier */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">Create New Pricing Tier</h3>
@@ -110,6 +146,17 @@ const PricingManager: React.FC = () => {
               onChange={(e) => setNewTier(prev => ({ ...prev, price_per_ticket: parseFloat(e.target.value) }))}
               className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Food Option</label>
+            <select
+              value={newTier.food_option}
+              onChange={(e) => setNewTier(prev => ({ ...prev, food_option: e.target.value as 'with_food' | 'without_food' }))}
+              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="without_food">Without Food</option>
+              <option value="with_food">With Food</option>
+            </select>
           </div>
           <div className="flex items-end sm:col-span-2 lg:col-span-1">
             <button
@@ -165,12 +212,33 @@ const PricingManager: React.FC = () => {
                       />
                       <span className="text-gray-600 text-sm">each</span>
                     </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+                      <select
+                        value={editingTier.food_option}
+                        onChange={(e) => setEditingTier(prev => prev ? { ...prev, food_option: e.target.value as 'with_food' | 'without_food' } : null)}
+                        className="w-full sm:w-32 px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="without_food">Without Food</option>
+                        <option value="with_food">With Food</option>
+                      </select>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={editingTier.is_active}
+                          onChange={(e) => setEditingTier(prev => prev ? { ...prev, is_active: e.target.checked } : null)}
+                          className="mr-2 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-gray-600 text-sm">Active</span>
+                      </label>
+                    </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleUpdateTier(tier.id, {
                           quantity_from: editingTier.quantity_from,
                           quantity_to: editingTier.quantity_to,
-                          price_per_ticket: editingTier.price_per_ticket
+                          price_per_ticket: editingTier.price_per_ticket,
+                          is_active: editingTier.is_active,
+                          food_option: editingTier.food_option
                         })}
                         className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors shadow-sm"
                       >
@@ -195,6 +263,20 @@ const PricingManager: React.FC = () => {
                       </span>
                       <span className="text-gray-500 hidden sm:inline">→</span>
                       <span className="text-gray-900 font-medium">${tier.price_per_ticket.toFixed(2)} each</span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        tier.food_option === 'with_food' 
+                          ? 'bg-orange-100 text-orange-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {tier.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+                      </span>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        tier.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {tier.is_active ? 'Active' : 'Inactive'}
+                      </span>
                     </div>
                     
                     <div className="flex space-x-2">

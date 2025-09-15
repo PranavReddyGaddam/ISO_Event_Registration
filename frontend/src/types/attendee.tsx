@@ -103,6 +103,8 @@ export interface TicketPricingTier {
   quantity_to: number;
   price_per_ticket: number;
   total_price: number;
+  is_active: boolean;
+  food_option: 'with_food' | 'without_food';
 }
 
 export interface TicketPricingInfo {
@@ -112,6 +114,7 @@ export interface TicketPricingInfo {
 
 export interface TicketCalculationRequest {
   quantity: number;
+  food_option: 'with_food' | 'without_food';
 }
 
 export interface TicketCalculationResponse {
@@ -127,6 +130,8 @@ export interface TicketPricingResponse {
   quantity_from: number;
   quantity_to: number;
   price_per_ticket: number;
+  is_active: boolean;
+  food_option: 'with_food' | 'without_food';
   created_at: string;
   updated_at: string;
 }
@@ -136,10 +141,14 @@ export interface TicketPricingCreate {
   quantity_from: number;
   quantity_to: number;
   price_per_ticket: number;
+  is_active: boolean;
+  food_option: 'with_food' | 'without_food';
 }
 
 export interface TicketPricingUpdate {
   quantity_from: number;
   quantity_to: number;
   price_per_ticket: number;
+  is_active: boolean;
+  food_option: 'with_food' | 'without_food';
 }

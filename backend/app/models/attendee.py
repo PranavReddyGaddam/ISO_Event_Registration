@@ -134,6 +134,8 @@ class TicketPricingBase(BaseModel):
     quantity_from: int = Field(ge=1, description="Starting quantity for this pricing tier (inclusive)")
     quantity_to: int = Field(ge=1, description="Ending quantity for this pricing tier (inclusive)")
     price_per_ticket: float = Field(ge=0, description="Price per ticket for this quantity range")
+    is_active: bool = Field(default=True, description="Whether this pricing tier is currently active")
+    food_option: Literal["with_food", "without_food"] = Field(description="Food option for this pricing tier")
     
     @validator("quantity_to")
     def validate_quantity_range(cls, v: int, values: dict) -> int:
@@ -181,6 +183,7 @@ class TicketPricingInfo(BaseModel):
 class TicketCalculationRequest(BaseModel):
     """Model for ticket price calculation request."""
     quantity: int = Field(ge=1, le=20, description="Number of tickets to calculate price for")
+    food_option: Literal["with_food", "without_food"] = Field(description="Food option for pricing calculation")
 
 
 class TicketCalculationResponse(BaseModel):

@@ -47,7 +47,7 @@ const Registration: React.FC = () => {
     }
   };
 
-  const calculatePrice = async (quantity: number) => {
+  const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food') => {
     if (quantity < 1 || quantity > 20) return;
     
     setLoadingPricing(true);
@@ -56,7 +56,10 @@ const Registration: React.FC = () => {
       const eventsResponse = await apiClient.get<{id: string, name: string}[]>('/api/events');
       if (eventsResponse && eventsResponse.length > 0) {
         const eventId = eventsResponse[0].id;
-        const response = await apiClient.post<TicketCalculationResponse>(`/api/pricing/calculate?event_id=${eventId}`, { quantity });
+        const response = await apiClient.post<TicketCalculationResponse>(`/api/pricing/calculate?event_id=${eventId}`, { 
+          quantity, 
+          food_option: foodOption 
+        });
         setSelectedPricing(response);
       }
     } catch (error) {
@@ -75,7 +78,7 @@ const Registration: React.FC = () => {
     } else if (field === 'ticket_quantity') {
       processedValue = Number(value);
       // Calculate price when quantity changes
-      calculatePrice(processedValue as number);
+      calculatePrice(processedValue as number, formData.food_option);
     }
     
     setFormData(prev => ({
@@ -312,7 +315,11 @@ const Registration: React.FC = () => {
                     name="food_option"
                     value="with_food"
                     checked={formData.food_option === 'with_food'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, food_option: e.target.value as 'with_food' | 'without_food' }))}
+                    onChange={(e) => {
+                      const newFoodOption = e.target.value as 'with_food' | 'without_food';
+                      setFormData(prev => ({ ...prev, food_option: newFoodOption }));
+                      calculatePrice(formData.ticket_quantity, newFoodOption);
+                    }}
                     className="mr-2 text-blue-600 focus:ring-blue-500"
                     disabled={status === ApiStatus.LOADING}
                   />
@@ -324,7 +331,11 @@ const Registration: React.FC = () => {
                     name="food_option"
                     value="without_food"
                     checked={formData.food_option === 'without_food'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, food_option: e.target.value as 'with_food' | 'without_food' }))}
+                    onChange={(e) => {
+                      const newFoodOption = e.target.value as 'with_food' | 'without_food';
+                      setFormData(prev => ({ ...prev, food_option: newFoodOption }));
+                      calculatePrice(formData.ticket_quantity, newFoodOption);
+                    }}
                     className="mr-2 text-blue-600 focus:ring-blue-500"
                     disabled={status === ApiStatus.LOADING}
                   />
