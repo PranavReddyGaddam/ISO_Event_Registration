@@ -89,9 +89,16 @@ async def update_event(
         update_data = event_data.dict(exclude_unset=True)
         update_data["updated_at"] = datetime.utcnow().isoformat()
         
+        # Debug logging
+        logger.info(f"Updating event with ID: {event_id}")
+        logger.info(f"Update data: {update_data}")
+        
         response = supabase_client.client.table("events").update(update_data).eq("id", event_id).execute()
         
+        logger.info(f"Supabase response: {response}")
+        
         if not response.data:
+            logger.error(f"Event not found in database for ID: {event_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Event not found"
