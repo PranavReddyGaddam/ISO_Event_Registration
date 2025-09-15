@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def get_events():
     """Get all events."""
     try:
-        response = supabase_client.client.table("events").select("*").order("created_at", desc=True).execute()
+        response = supabase_client.service_client.table("events").select("*").order("created_at", desc=True).execute()
         return response.data or []
     except Exception as e:
         logger.error(f"Error getting events: {e}")
@@ -31,7 +31,8 @@ async def get_events():
 async def get_current_event():
     """Get the current active event."""
     try:
-        response = supabase_client.client.table("events").select("*").order("created_at", desc=True).limit(1).execute()
+        # Order by updated_at to get the most recently updated event using service client
+        response = supabase_client.service_client.table("events").select("*").order("updated_at", desc=True).limit(1).execute()
         if not response.data:
             # Create a default event if none exists
             default_event = await create_default_event()
@@ -58,7 +59,7 @@ async def create_event(
         event_data_dict["created_at"] = datetime.utcnow().isoformat()
         event_data_dict["updated_at"] = datetime.utcnow().isoformat()
         
-        response = supabase_client.client.table("events").insert(event_data_dict).execute()
+        response = supabase_client.service_client.table("events").insert(event_data_dict).execute()
         
         if not response.data:
             raise HTTPException(
@@ -93,8 +94,8 @@ async def update_event(
         logger.info(f"Updating event with ID: {event_id}")
         logger.info(f"Update data: {update_data}")
         
-        # First check if the event exists
-        check_response = supabase_client.client.table("events").select("id").eq("id", event_id).execute()
+        # First check if the event exists using service client
+        check_response = supabase_client.service_client.table("events").select("id").eq("id", event_id).execute()
         
         if not check_response.data:
             logger.error(f"Event not found in database for ID: {event_id}")
@@ -103,13 +104,16 @@ async def update_event(
                 detail="Event not found"
             )
         
-        # Perform the update
-        response = supabase_client.client.table("events").update(update_data).eq("id", event_id).execute()
+        # Perform the update using service client to bypass RLS
+        response = supabase_client.service_client.table("events").update(update_data).eq("id", event_id).execute()
         
-        logger.info(f"Supabase response: {response}")
+        logger.info(f"Supabase update response: {response}")
+        logger.info(f"Update response data: {response.data}")
         
-        # Get the updated event
-        updated_response = supabase_client.client.table("events").select("*").eq("id", event_id).execute()
+        # Get the updated event using service client
+        updated_response = supabase_client.service_client.table("events").select("*").eq("id", event_id).execute()
+        
+        logger.info(f"Retrieved updated event: {updated_response.data}")
         
         if not updated_response.data:
             logger.error(f"Failed to retrieve updated event for ID: {event_id}")
@@ -172,7 +176,7 @@ async def create_default_event() -> EventResponse:
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        response = supabase_client.client.table("events").insert(event_data).execute()
+        response = supabase_client.service_client.table("events").insert(event_data).execute()
         if response.data:
             logger.info("Default event created successfully")
             return response.data[0]
