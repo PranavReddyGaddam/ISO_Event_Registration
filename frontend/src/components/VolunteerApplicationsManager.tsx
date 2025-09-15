@@ -21,6 +21,7 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
   const [rejectionReason, setRejectionReason] = useState('');
   const [roleFilter, setRoleFilter] = useState<TeamRole | 'all' | ''>('all');
   const [loading, setLoading] = useState(false);
+  const [editingRole, setEditingRole] = useState<{ id: string; value: TeamRole | '' } | null>(null);
 
   const loadApplications = async () => {
     setLoading(true);
@@ -70,6 +71,28 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
     } catch (error) {
       console.error('Failed to approve application:', error);
       alert('Failed to approve application. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveRole = async (application: VolunteerApplication) => {
+    if (!editingRole || editingRole.id !== application.id) return;
+    if (!editingRole.value) {
+      // Clear role
+      await apiClient.put(`/api/volunteer-applications/${application.id}`, { status: application.status, team_role: null });
+      setEditingRole(null);
+      await loadApplications();
+      return;
+    }
+    try {
+      setLoading(true);
+      await apiClient.put(`/api/volunteer-applications/${application.id}`, { status: application.status, team_role: editingRole.value });
+      setEditingRole(null);
+      await loadApplications();
+    } catch (e) {
+      console.error('Failed to update team role:', e);
+      alert('Failed to update team role.');
     } finally {
       setLoading(false);
     }
@@ -218,7 +241,49 @@ const VolunteerApplicationsManager: React.FC<VolunteerApplicationsManagerProps> 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
                   <p><span className="font-medium">Email:</span> {application.email}</p>
                   <p><span className="font-medium">Phone:</span> {application.phone}</p>
-                  <p className="sm:col-span-2"><span className="font-medium">Team Role:</span> {application.team_role || 'Unassigned'}</p>
+                  <div className="sm:col-span-2 flex items-center gap-2">
+                    <span className="font-medium">Team Role:</span>
+                    {editingRole && editingRole.id === application.id ? (
+                      <>
+                        <select
+                          value={editingRole.value || ''}
+                          onChange={(e) => setEditingRole({ id: application.id, value: (e.target.value || '') as any })}
+                          className="px-2 py-1 bg-white border border-gray-300 rounded text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={loading}
+                        >
+                          <option value="">Unassigned</option>
+                          {TEAM_ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleSaveRole(application)}
+                          disabled={loading}
+                          className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingRole(null)}
+                          disabled={loading}
+                          className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span>{application.team_role || 'Unassigned'}</span>
+                        <button
+                          onClick={() => setEditingRole({ id: application.id, value: (application.team_role as TeamRole) || '' })}
+                          disabled={loading}
+                          className="px-3 py-1 bg-gray-200 text-gray-800 rounded text-sm hover:bg-gray-300 transition-colors"
+                        >
+                          Edit
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <p><span className="font-medium">Applied:</span> {formatDate(application.created_at)}</p>
                   {application.reviewed_at && (
                     <p><span className="font-medium">Reviewed:</span> {formatDate(application.reviewed_at)}</p>
