@@ -47,7 +47,13 @@ class VolunteerApplicationBase(BaseModel):
 
 
 class VolunteerApplicationCreate(VolunteerApplicationBase):
-    pass
+    team_role: str = Field(..., description="Required team role for the applicant")
+
+    @validator('team_role')
+    def validate_team_role_create(cls, v):
+        if v not in VolunteerApplicationBase.ALLOWED_ROLES:
+            raise ValueError('team_role must be one of the predefined roles')
+        return v
 
 
 class VolunteerApplicationResponse(VolunteerApplicationBase):

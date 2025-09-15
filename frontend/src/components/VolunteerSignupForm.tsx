@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApiClient } from '../hooks/useApiClient';
-import { VolunteerApplicationCreate, TEAM_ROLES, TeamRole } from '../types/volunteerApplication';
+import { VolunteerApplicationCreate, TEAM_ROLES } from '../types/volunteerApplication';
 import { ApiStatus } from '../types/api';
 
 interface VolunteerSignupFormProps {
@@ -14,7 +14,7 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
     name: '',
     email: '',
     phone: '',
-    team_role: undefined
+    team_role: '' as any
   });
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,7 +58,9 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
       }
     }
 
-    // team_role is optional; no validation needed
+    if (!formData.team_role || (formData.team_role as any) === '') {
+      newErrors.team_role = 'Team role is required';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -78,7 +80,7 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
       setStatus(ApiStatus.SUCCESS);
       
       // Reset form
-      setFormData({ name: '', email: '', phone: '', team_role: undefined });
+      setFormData({ name: '', email: '', phone: '', team_role: '' as any });
       
       // Call success callback if provided
       if (onSuccess) {
@@ -206,20 +208,23 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
         {/* Team Role (optional) */}
         <div>
           <label htmlFor="team_role" className="block text-sm font-medium text-gray-300 mb-2">
-            Team Role (optional)
+            Team Role *
           </label>
           <select
             id="team_role"
             value={(formData.team_role as string) || ''}
-            onChange={(e) => handleInputChange('team_role', (e.target.value || undefined) as unknown as string)}
+            onChange={(e) => handleInputChange('team_role', e.target.value)}
             className="w-full px-3 py-2 bg-white/10 border rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-600"
             disabled={status === ApiStatus.LOADING}
           >
-            <option value="">Select a role (optional)</option>
+            <option value="">Select a role</option>
             {TEAM_ROLES.map(role => (
               <option key={role} value={role} className="bg-gray-900 text-white">{role}</option>
             ))}
           </select>
+          {errors.team_role && (
+            <p className="mt-1 text-sm text-red-400">{errors.team_role}</p>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-4">

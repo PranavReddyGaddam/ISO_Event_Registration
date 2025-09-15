@@ -41,12 +41,14 @@ export const Navigation: React.FC = () => {
             
             {isAuthenticated() ? (
               <>
-                <Link 
-                  to="/checkin" 
-                  className={`nav-item ${isActivePath('/checkin') ? 'nav-item-active' : 'nav-item-inactive'}`}
-                >
-                  Check-in
-                </Link>
+                {import.meta.env.VITE_CHECKIN_ENABLED === 'true' && (
+                  <Link 
+                    to="/checkin" 
+                    className={`nav-item ${isActivePath('/checkin') ? 'nav-item-active' : 'nav-item-inactive'}`}
+                  >
+                    Check-in
+                  </Link>
+                )}
                 
                 {isPresident() && (
                   <Link 
@@ -136,17 +138,19 @@ export const Navigation: React.FC = () => {
 
               {isAuthenticated() ? (
                 <>
-                  <Link
-                    to="/checkin"
-                    onClick={closeMobileMenu}
-                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActivePath('/checkin')
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
-                    }`}
-                  >
-                    Check-in
-                  </Link>
+                  {import.meta.env.VITE_CHECKIN_ENABLED === 'true' && (
+                    <Link
+                      to="/checkin"
+                      onClick={closeMobileMenu}
+                      className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                        isActivePath('/checkin')
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      Check-in
+                    </Link>
+                  )}
 
                   {isPresident() && (
                     <Link

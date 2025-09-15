@@ -399,24 +399,11 @@ class GmailEmailSender:
                         <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
                     </div>
                     
-                    <h3>Your Personal QR Code</h3>
-                    <p>Please save this QR code and bring it with you to the event for quick check-in:</p>
+                    <h3>Your QR Code/s have been attached to this email as a PDF</h3>
+                    <p>Please save this PDF and bring it with you to the event for quick check-in:</p>
+                
+                        
                     
-                    <div class="qr-code">
-                        <img src="{qr_code_url}" alt="Your Event QR Code" />
-                        <p><strong>QR Code ID:</strong> {qr_code_id}</p>
-                    </div>
-                    
-                    <div class="info-box">
-                        <h4>Important Information:</h4>
-                        <ul>
-                            <li>Save this QR code to your phone or print this email</li>
-                            <li>Arrive 15 minutes early for check-in</li>
-                            <li>Contact us if you have any questions</li>
-                        </ul>
-                    </div>
-                    
-                    <p>If you can't access your QR code, show your confirmation email and photo ID at check-in.</p>
                     
                     <div class="info-box">
                         <h4>Terms and Conditions:</h4>
