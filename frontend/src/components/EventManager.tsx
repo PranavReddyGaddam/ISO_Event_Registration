@@ -24,6 +24,32 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
 
   const apiClient = useApiClient();
 
+  // Helper function to convert ISO date to datetime-local format for input fields
+  const formatDateForInput = (isoDate: string) => {
+    try {
+      const date = new Date(isoDate);
+      // Convert to local timezone and format for datetime-local input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    } catch {
+      return isoDate;
+    }
+  };
+
+  // Helper function to convert datetime-local format to ISO format for backend
+  const convertToISO = (datetimeLocal: string) => {
+    try {
+      const date = new Date(datetimeLocal);
+      return date.toISOString();
+    } catch {
+      return datetimeLocal;
+    }
+  };
+
   useEffect(() => {
     loadCurrentEvent();
   }, []);
@@ -35,10 +61,11 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
     try {
       const event = await apiClient.get<Event>('/api/events/current');
       setCurrentEvent(event);
+      
       setFormData({
         name: event.name,
         description: event.description,
-        event_date: event.event_date,
+        event_date: formatDateForInput(event.event_date),
         location: event.location
       });
       setStatus(ApiStatus.SUCCESS);
@@ -71,7 +98,7 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
       const updateData: EventUpdate = {
         name: formData.name,
         description: formData.description,
-        event_date: formData.event_date,
+        event_date: convertToISO(formData.event_date),
         location: formData.location
       };
 
@@ -82,6 +109,14 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
       setCurrentEvent(updatedEvent);
       setIsEditing(false);
       setStatus(ApiStatus.SUCCESS);
+      
+      // Update form data with the fresh data from the server
+      setFormData({
+        name: updatedEvent.name,
+        description: updatedEvent.description,
+        event_date: formatDateForInput(updatedEvent.event_date),
+        location: updatedEvent.location
+      });
       
       if (onEventUpdated) {
         onEventUpdated();
@@ -98,7 +133,7 @@ const EventManager: React.FC<EventManagerProps> = ({ onEventUpdated }) => {
       setFormData({
         name: currentEvent.name,
         description: currentEvent.description,
-        event_date: currentEvent.event_date,
+        event_date: formatDateForInput(currentEvent.event_date),
         location: currentEvent.location
       });
     }
