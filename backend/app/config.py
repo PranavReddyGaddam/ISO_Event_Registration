@@ -14,20 +14,14 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: str
     
-    # Gmail SMTP Configuration (legacy)
+    # Gmail SMTP Configuration
     gmail_email: str
     gmail_app_password: str
-
-    # SendGrid Configuration
-    sendgrid_api_key: Optional[str] = None
-    sendgrid_from_email: Optional[str] = None
-    sendgrid_reply_to_email: Optional[str] = None
     
     # Application Configuration
     environment: str = "development"
     secret_key: str
-    cors_origins: str = ""
-    cors_origin_regex: Optional[str] = None
+    cors_origins: str = "http://localhost:5173"
     
     # Default Passwords (for development/testing)
     default_volunteer_password: str
@@ -39,14 +33,11 @@ class Settings(BaseSettings):
     @validator("cors_origins")
     def parse_cors_origins(cls, v: str) -> list[str]:
         """Parse CORS origins from comma-separated string."""
-        if not v or not v.strip():
-            return []
-        return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return [origin.strip() for origin in v.split(",")]
     
     class Config:
         env_file = ".env"
         case_sensitive = False
-        extra = "ignore"
 
 
 # Global settings instance
