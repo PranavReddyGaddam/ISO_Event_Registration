@@ -14,11 +14,9 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: str
     
-    # Email Configuration
+    # Gmail SMTP Configuration
     gmail_email: str
     gmail_app_password: str
-    sendgrid_from_email: str | None = None
-    sendgrid_reply_to_email: str | None = None
     
     # Application Configuration
     environment: str = "development"
