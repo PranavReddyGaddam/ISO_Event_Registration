@@ -261,7 +261,8 @@ class MinimalSendGridSender:
                         </ul>
                     </div>
                     <div class=\"footer\">
-                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
@@ -332,7 +333,8 @@ class MinimalSendGridSender:
                         </ul>
                     </div>
                     <div class=\"footer\">
-                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
@@ -647,7 +649,8 @@ class SendGridEmailSender:
                         </ul>
                     </div>
                     <div class="footer">
-                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
@@ -699,7 +702,8 @@ class SendGridEmailSender:
                     <p><strong>Review Timeline:</strong> We typically review applications within 2-3 business days.</p>
                     <p>If you have any questions about your application or the volunteer program, please don't hesitate to contact us.</p>
                     <div class="footer">
-                        <p>Thank you for your interest in supporting our event!</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
@@ -757,7 +761,8 @@ class SendGridEmailSender:
                     </ul>
                     <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
                     <div class="footer">
-                        <p>Welcome to the team! We're excited to work with you.</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
@@ -877,7 +882,8 @@ class SendGridEmailSender:
                         </ul>
                     </div>
                     <div class="footer">
-                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p>We look forward to seeing you at the event.</p>
+                        <p>For any further queries, please reach out to this email.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
                 </div>
