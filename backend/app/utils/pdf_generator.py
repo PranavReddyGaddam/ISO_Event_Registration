@@ -167,6 +167,8 @@ class PDFGenerator:
                 story.append(Spacer(1, 0.15*inch))
 
                 # Terms and conditions as bullet points - fixed position
+                story.append(Paragraph("<b>Terms and Conditions:</b>", self.terms_style))
+                story.append(Spacer(1, 0.05*inch))
                 terms_paragraphs = self._get_terms_paragraphs()
                 for term_para in terms_paragraphs:
                     story.append(term_para)

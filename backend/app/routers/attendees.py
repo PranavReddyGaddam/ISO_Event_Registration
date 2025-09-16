@@ -362,8 +362,16 @@ async def register_attendee(
         except Exception as e:
             logger.error(f"Email sending failed but registration succeeded: {e}")
         
-        # Return the first attendee record (for API compatibility)
-        return AttendeeResponse(**created_attendees[0])
+        # Return a summary record with total registration information
+        first_attendee = created_attendees[0]
+        summary_data = {
+            **first_attendee,
+            "ticket_quantity": attendee.ticket_quantity,  # Total tickets purchased
+            "total_price": total_price,  # Total price for all tickets
+            "qr_code_id": "",  # Empty for security - not displayed on confirmation screen
+            "qr_code_url": None  # No single QR code URL for multiple tickets
+        }
+        return AttendeeResponse(**summary_data)
         
     except HTTPException:
         raise
