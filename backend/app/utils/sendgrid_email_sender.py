@@ -313,11 +313,7 @@ class MinimalSendGridSender:
                         <p><strong>Number of Tickets:</strong> {ticket_count}</p>
                         <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
                     </div>
-                    <div class=\"pdf-box\">
-                        <h3>📄 Your QR Code Tickets</h3>
-                        <p>Your QR code tickets have been attached to this email as a PDF file.</p>
-                        <p>Each ticket contains a unique QR code that will be scanned at check-in.</p>
-                    </div>
+                    
                     <p>If you can't access the PDF attachment, please contact us immediately.</p>
                     <div class=\"info-box\">
                         <h4>Terms and Conditions:</h4>
@@ -862,11 +858,7 @@ class SendGridEmailSender:
                         <p><strong>Number of Tickets:</strong> {ticket_count}</p>
                         <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
                     </div>
-                    <div class="pdf-box">
-                        <h3>📄 Your QR Code Tickets</h3>
-                        <p>Your QR code tickets have been attached to this email as a PDF file.</p>
-                        <p>Each ticket contains a unique QR code that will be scanned at check-in.</p>
-                    </div>
+                    
                     <p>If you can't access the PDF attachment, please contact us immediately.</p>
                     <div class="info-box">
                         <h4>Terms and Conditions:</h4>

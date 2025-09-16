@@ -362,6 +362,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volunteer</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (count/amount)</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zelle (count/amount)</th>
@@ -372,6 +373,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                       <tr key={v.volunteer_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onVolunteerClick(v)}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.full_name || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.email || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.team_role || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.total_attendees}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.cash_count} / ${v.cash_amount.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.zelle_count} / ${v.zelle_amount.toFixed(2)}</td>
@@ -390,6 +392,9 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                         <div className="flex-1">
                           <h3 className="text-sm font-medium text-gray-900">{v.full_name || 'Unnamed Volunteer'}</h3>
                           <p className="text-xs text-gray-500 mt-1">{v.email || '-'}</p>
+                          {v.team_role && (
+                            <p className="text-xs text-gray-600 mt-1">Role: {v.team_role}</p>
+                          )}
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-semibold text-gray-900">{v.total_attendees}</div>

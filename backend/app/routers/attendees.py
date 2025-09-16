@@ -119,7 +119,7 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
     """Get all volunteers with their registration statistics."""
     try:
         # First, get all volunteer users (role = 'volunteer')
-        volunteers_resp = supabase_client.service_client.table("users").select("id, full_name, email").eq("role", "volunteer").execute()
+        volunteers_resp = supabase_client.service_client.table("users").select("id, full_name, email, team_role").eq("role", "volunteer").execute()
         volunteers = volunteers_resp.data or []
         
         # Then get attendees data for statistics
@@ -164,6 +164,7 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 "volunteer_id": vid,
                 "full_name": volunteer.get("full_name"),
                 "email": volunteer.get("email"),
+                "team_role": volunteer.get("team_role"),
                 **stats
             })
         
