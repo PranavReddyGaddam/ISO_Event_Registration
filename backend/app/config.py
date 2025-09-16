@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Gmail SMTP Configuration
     gmail_email: str
     gmail_app_password: str
+
+    # SendGrid Configuration
+    sendgrid_api_key: Optional[str] = None
+    sendgrid_from_email: Optional[str] = None
+    sendgrid_reply_to_email: Optional[str] = None
     
     # Application Configuration
     environment: str = "development"
