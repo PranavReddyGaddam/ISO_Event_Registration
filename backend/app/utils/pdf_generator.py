@@ -67,11 +67,13 @@ class PDFGenerator:
             'TermsConditions',
             parent=self.styles['Normal'],
             fontSize=8,
-            spaceAfter=6,
+            spaceAfter=4,
+            spaceBefore=2,
             alignment=TA_LEFT,
             textColor=black,
             leftIndent=0,
-            rightIndent=0
+            rightIndent=0,
+            bulletIndent=10
         )
         
         # Terms title style
@@ -84,18 +86,26 @@ class PDFGenerator:
             textColor=darkblue
         )
     
-    def _get_terms_paragraph(self) -> Paragraph:
-        """Return a single terms and conditions paragraph to place on each page."""
-        terms_text = (
-            "<b>Terms:</b> No exchange/refund; unauthorized sale prohibited. "
-            "ISO reserves right of admission. Alcohol/narcotics prohibited. "
-            "Present QR from email to receive wristbands. Attendance at own risk; "
-            "ISO-SJSU released from related claims. Entry implies consent to photo/video for ISO use. "
-            "Food allergy/diet issues at attendee's risk. Ticket categories are final. "
-            "Prohibited: weapons, sharp objects, outside food/drinks, pro cameras, drones, dangerous items. "
-            "ISO-SJSU not responsible for lost/stolen/damaged belongings. Terms may change at ISO discretion."
-        )
-        return Paragraph(terms_text, self.terms_style)
+    def _get_terms_paragraphs(self) -> List[Paragraph]:
+        """Return terms and conditions as bullet points to place on each page."""
+        terms_items = [
+            "No exchange/refund; unauthorized sale prohibited",
+            "ISO reserves right of admission. Alcohol/narcotics prohibited",
+            "Present QR from email to receive wristbands",
+            "Attendance at own risk; ISO-SJSU released from related claims",
+            "Entry implies consent to photo/video for ISO use",
+            "Food allergy/diet issues at attendee's risk. Ticket categories are final",
+            "Prohibited: weapons, sharp objects, outside food/drinks, pro cameras, drones, dangerous items",
+            "ISO-SJSU not responsible for lost/stolen/damaged belongings",
+            "Terms may change at ISO discretion"
+        ]
+        
+        paragraphs = []
+        for item in terms_items:
+            bullet_text = f"• {item}"
+            paragraphs.append(Paragraph(bullet_text, self.terms_style))
+        
+        return paragraphs
     
     def generate_qr_tickets_pdf(self, qr_codes_data: List[Dict[str, Any]], event_name: str = "Volunteer Event 2024") -> bytes:
         """
@@ -119,29 +129,29 @@ class PDFGenerator:
             for i, qr_data in enumerate(qr_codes_data):
                 # Add page break for subsequent tickets
                 if i > 0:
-                    story.append(Spacer(1, 0.5*inch))
+                    story.append(PageBreak())
                 
-                # Event title
+                # Event title - fixed position
                 story.append(Paragraph(event_name, self.title_style))
-                story.append(Spacer(1, 0.2*inch))
+                story.append(Spacer(1, 0.1*inch))
                 
-                # Ticket number
+                # Ticket number - fixed position
                 ticket_text = f"Ticket {qr_data['ticket_number']} of {qr_data['total_tickets']}"
                 story.append(Paragraph(ticket_text, self.subtitle_style))
-                story.append(Spacer(1, 0.3*inch))
+                story.append(Spacer(1, 0.2*inch))
                 
-                # Download and add QR code image
+                # Download and add QR code image - fixed position
                 try:
                     qr_response = requests.get(qr_data['qr_code_url'], timeout=10)
                     if qr_response.status_code == 200:
                         qr_image = Image(io.BytesIO(qr_response.content))
-                        qr_image.drawHeight = 3*inch
-                        qr_image.drawWidth = 3*inch
+                        qr_image.drawHeight = 2.5*inch  # Slightly smaller for better spacing
+                        qr_image.drawWidth = 2.5*inch
                         story.append(qr_image)
                         # QR Code ID directly under QR image
-                        story.append(Spacer(1, 0.15*inch))
+                        story.append(Spacer(1, 0.1*inch))
                         story.append(Paragraph(f"<b>QR Code ID:</b> {qr_data['qr_code_id']}", self.ticket_style))
-                        story.append(Spacer(1, 0.2*inch))
+                        story.append(Spacer(1, 0.15*inch))
                     else:
                         logger.error(f"Failed to download QR code: {qr_data['qr_code_url']}")
                         story.append(Paragraph("QR Code not available", self.info_style))
@@ -149,19 +159,17 @@ class PDFGenerator:
                     logger.error(f"Error downloading QR code: {e}")
                     story.append(Paragraph("QR Code not available", self.info_style))
 
-                # Attendee information
+                # Attendee information - fixed position
                 story.append(Paragraph(f"<b>Name:</b> {qr_data['attendee_name']}", self.info_style))
                 story.append(Paragraph(f"<b>Email:</b> {qr_data['attendee_email']}", self.info_style))
                 story.append(Paragraph(f"<b>Phone:</b> {qr_data['attendee_phone']}", self.info_style))
                 story.append(Paragraph(f"<b>Price per ticket:</b> ${qr_data['price_per_ticket']:.2f}", self.info_style))
-                story.append(Spacer(1, 0.2*inch))
+                story.append(Spacer(1, 0.15*inch))
 
-                # Terms on each page (small font)
-                story.append(self._get_terms_paragraph())
-                
-                # Add page break for next ticket (except for the last one)
-                if i < len(qr_codes_data) - 1:
-                    story.append(Spacer(1, 0.5*inch))
+                # Terms and conditions as bullet points - fixed position
+                terms_paragraphs = self._get_terms_paragraphs()
+                for term_para in terms_paragraphs:
+                    story.append(term_para)
 
             
             # Build PDF
