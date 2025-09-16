@@ -9,17 +9,26 @@ from app.config import settings
 from app.utils.supabase_client import supabase_client
 from app.utils.pdf_generator import pdf_generator
 
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Mail,
-    Email,
-    To,
-    Attachment,
-    FileContent,
-    FileName,
-    FileType,
-    Disposition,
-)
+try:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import (
+        Mail,
+        Email,
+        To,
+        Attachment,
+        FileContent,
+        FileName,
+        FileType,
+        Disposition,
+    )
+except Exception as _import_exc:  # pragma: no cover - defensive boot guard
+    SendGridAPIClient = None  # type: ignore
+    Mail = Email = To = Attachment = FileContent = FileName = FileType = Disposition = None  # type: ignore
+    logger = logging.getLogger(__name__)
+    logger.error(
+        "SendGrid SDK not available at import time. Install 'sendgrid' and restart. Error: %s",
+        _import_exc,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -161,6 +170,9 @@ class SendGridEmailSender:
 
     def _send_email_sync(self, to_email: str, subject: str, html_content: str) -> bool:
         try:
+            if SendGridAPIClient is None or Mail is None:  # type: ignore
+                logger.error("SendGrid SDK not installed. Please add 'sendgrid' to requirements and restart.")
+                return False
             message = Mail(
                 from_email=Email(self.from_email),
                 to_emails=To(to_email),
@@ -209,6 +221,9 @@ class SendGridEmailSender:
         attachment_filename: str,
     ) -> bool:
         try:
+            if SendGridAPIClient is None or Mail is None:  # type: ignore
+                logger.error("SendGrid SDK not installed. Please add 'sendgrid' to requirements and restart.")
+                return False
             message = Mail(
                 from_email=Email(self.from_email),
                 to_emails=To(to_email),
