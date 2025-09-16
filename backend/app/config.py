@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: str
     
-<<<<<<< HEAD
     # Gmail SMTP Configuration (legacy)
     gmail_email: str
     gmail_app_password: str
@@ -23,11 +22,6 @@ class Settings(BaseSettings):
     sendgrid_api_key: Optional[str] = None
     sendgrid_from_email: Optional[str] = None
     sendgrid_reply_to_email: Optional[str] = None
-=======
-    # Gmail SMTP Configuration
-    gmail_email: str
-    gmail_app_password: str
->>>>>>> e5c0c76 (Revert "Changed Email service to sendgrid from Gmail API")
     
     # Application Configuration
     environment: str = "development"
