@@ -209,7 +209,7 @@ class MinimalSendGridSender:
         qr_code_id: str,
         ticket_quantity: int = 1,
         total_price: float = 0.0,
-        event_details: dict | None = None,
+        event_details: Optional[dict] = None,
     ) -> str:
         if event_details is None:
             event_details = {
@@ -275,7 +275,7 @@ class MinimalSendGridSender:
         name: str,
         ticket_count: int,
         total_price: float,
-        event_details: dict | None = None,
+        event_details: Optional[dict] = None,
     ) -> str:
         if event_details is None:
             event_details = {
