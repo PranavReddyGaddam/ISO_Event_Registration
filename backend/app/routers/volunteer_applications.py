@@ -14,7 +14,7 @@ from app.models.volunteer_application import (
 from app.models.auth import TokenData
 from app.utils.supabase_client import supabase_client
 from app.utils.auth import get_current_president
-from app.utils.gmail_email_sender import gmail_email_sender
+from app.utils.sendgrid_email_sender import sendgrid_email_sender
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def create_volunteer_application(application: VolunteerApplicationCreate):
         
         # Send confirmation email
         try:
-            await gmail_email_sender.send_volunteer_signup_confirmation(
+            await sendgrid_email_sender.send_volunteer_signup_confirmation(
                 application.email,
                 application.name
             )
@@ -231,7 +231,7 @@ async def approve_volunteer_application(
         
         # Send approval email with login credentials
         try:
-            await gmail_email_sender.send_volunteer_approval_email(
+            await sendgrid_email_sender.send_volunteer_approval_email(
                 application["email"],
                 application["name"],
                 temp_password
@@ -296,7 +296,7 @@ async def reject_volunteer_application(
         
         # Send rejection email
         try:
-            await gmail_email_sender.send_volunteer_rejection_email(
+            await sendgrid_email_sender.send_volunteer_rejection_email(
                 application["email"],
                 application["name"],
                 rejection_data.rejection_reason
