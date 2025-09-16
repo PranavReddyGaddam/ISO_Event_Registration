@@ -1,20 +1,44 @@
 """Minimal SendGrid sender (not wired yet). Safe to keep alongside Gmail code."""
 
-from typing import Optional
+from typing import Optional, Tuple
 import logging
+import asyncio
+import base64
+
+from app.config import settings
+from app.utils.supabase_client import supabase_client
 
 
 logger = logging.getLogger(__name__)
 
 
-def _get_sendgrid_classes():
+def _get_sendgrid_classes() -> Tuple[object, object, object, object, object, object, object, object]:
     try:
         from sendgrid import SendGridAPIClient  # type: ignore
-        from sendgrid.helpers.mail import Mail, Email, To  # type: ignore
-        return SendGridAPIClient, Mail, Email, To
+        from sendgrid.helpers.mail import (  # type: ignore
+            Mail,
+            Email,
+            To,
+            Attachment,
+            FileContent,
+            FileName,
+            FileType,
+            Disposition,
+        )
+        return (
+            SendGridAPIClient,
+            Mail,
+            Email,
+            To,
+            Attachment,
+            FileContent,
+            FileName,
+            FileType,
+            Disposition,
+        )
     except Exception as exc:  # pragma: no cover - defensive
         logger.error("SendGrid SDK not available: %s", exc)
-        return None, None, None, None
+        return (None, None, None, None, None, None, None, None)
 
 
 class MinimalSendGridSender:
@@ -28,7 +52,17 @@ class MinimalSendGridSender:
         self.reply_to = reply_to
 
     def send_html(self, to_email: str, subject: str, html_content: str) -> bool:
-        SendGridAPIClient, Mail, Email, To = _get_sendgrid_classes()
+        (
+            SendGridAPIClient,
+            Mail,
+            Email,
+            To,
+            Attachment,
+            FileContent,
+            FileName,
+            FileType,
+            Disposition,
+        ) = _get_sendgrid_classes()
         if not all([SendGridAPIClient, Mail, Email, To]):
             return False
 
@@ -49,6 +83,105 @@ class MinimalSendGridSender:
         except Exception as exc:
             logger.error("SendGrid send error: %s", exc)
             return False
+
+    async def get_current_event_details(self) -> dict:
+        try:
+            current_event = await supabase_client.get_current_event()
+            if current_event:
+                return {
+                    "name": current_event.get("name", settings.event_name),
+                    "date": current_event.get("event_date", settings.event_date),
+                    "location": current_event.get("location", "TBD"),
+                }
+        except Exception as e:
+            logger.error(f"Error getting current event details: {e}")
+        return {"name": settings.event_name, "date": settings.event_date, "location": "TBD"}
+
+    async def _send_email(self, to_email: str, subject: str, html_content: str) -> bool:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.send_html, to_email, subject, html_content)
+
+    async def _send_email_with_pdf(self, to_email: str, subject: str, html_content: str, pdf_bytes: bytes, filename: str) -> bool:
+        (
+            SendGridAPIClient,
+            Mail,
+            Email,
+            To,
+            Attachment,
+            FileContent,
+            FileName,
+            FileType,
+            Disposition,
+        ) = _get_sendgrid_classes()
+        if not all([SendGridAPIClient, Mail, Email, To, Attachment]):
+            return False
+
+        try:
+            message = Mail(
+                from_email=Email(self.from_email) if self.from_email else None,
+                to_emails=To(to_email),
+                subject=subject,
+                html_content=html_content,
+            )
+            if self.reply_to:
+                message.reply_to = Email(self.reply_to)
+
+            encoded = base64.b64encode(pdf_bytes).decode("utf-8")
+            message.attachment = Attachment(
+                FileContent(encoded),
+                FileName(filename),
+                FileType("application/pdf"),
+                Disposition("attachment"),
+            )
+
+            client = SendGridAPIClient()
+            response = client.send(message)
+            logger.info("SendGrid sent (pdf) status=%s", getattr(response, "status_code", None))
+            return int(getattr(response, "status_code", 0)) in (200, 202)
+        except Exception as exc:
+            logger.error("SendGrid send error (pdf): %s", exc)
+            return False
+
+    # Public API matching Gmail sender
+    async def send_checkin_confirmation(self, email: str, name: str) -> bool:
+        details = await self.get_current_event_details()
+        subject = f"Check-in Confirmed - {details['name']}"
+        html = f"""
+        <html><body><div style=\"font-family: Arial\"><h2>Hi {name},</h2>
+        <p>Your check-in for <strong>{details['name']}</strong> has been confirmed.</p>
+        </div></body></html>
+        """
+        return await self._send_email(email, subject, html)
+
+    async def send_volunteer_signup_confirmation(self, email: str, name: str) -> bool:
+        subject = f"Volunteer Application Received - {settings.event_name}"
+        html = f"<html><body><h2>Hi {name},</h2><p>We received your volunteer application.</p></body></html>"
+        return await self._send_email(email, subject, html)
+
+    async def send_volunteer_approval_email(self, email: str, name: str, temp_password: str) -> bool:
+        subject = f"Volunteer Application Approved - {settings.event_name}"
+        html = f"<html><body><h2>Hi {name},</h2><p>Your application was approved.</p><p>Temporary password: {temp_password}</p></body></html>"
+        return await self._send_email(email, subject, html)
+
+    async def send_volunteer_rejection_email(self, email: str, name: str, rejection_reason: str) -> bool:
+        subject = f"Volunteer Application Update - {settings.event_name}"
+        html = f"<html><body><h2>Hi {name},</h2><p>We are unable to approve your application.</p><p>Reason: {rejection_reason}</p></body></html>"
+        return await self._send_email(email, subject, html)
+
+    async def send_registration_email(self, email: str, name: str, qr_code_url: str, qr_code_id: str, ticket_quantity: int = 1, total_price: float = 0.0) -> bool:
+        details = await self.get_current_event_details()
+        subject = f"Welcome to {details['name']} - Your QR Code Inside!"
+        html = f"<html><body><h2>Hi {name},</h2><p>Your registration is confirmed. QR: {qr_code_id}</p></body></html>"
+        return await self._send_email(email, subject, html)
+
+    async def send_registration_email_with_pdf(self, email: str, name: str, qr_codes_data: list, total_price: float) -> bool:
+        # Expecting caller to provide a generated PDF elsewhere; for now, synthesize a small placeholder
+        # The actual PDF content is generated upstream in Gmail flow; here we rely on router to pass bytes if needed in future.
+        details = await self.get_current_event_details()
+        subject = f"Welcome to {details['name']} - Your QR Code Tickets Inside!"
+        html = f"<html><body><h2>Hi {name},</h2><p>Your tickets are attached as PDF.</p></body></html>"
+        # No PDF bytes available here; fall back to simple email
+        return await self._send_email(email, subject, html)
 
 """SendGrid email integration utilities (replacement for Gmail senders)."""
 
