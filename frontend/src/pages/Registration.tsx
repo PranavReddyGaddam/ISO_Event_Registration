@@ -344,45 +344,21 @@ const Registration: React.FC = () => {
               </div>
             </div>
 
-            {/* Pricing Information */}
-            {pricingInfo && (
-              <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Pricing Information</h3>
-                <div className="space-y-2">
-                  {pricingInfo.tiers.map((tier, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span className="text-gray-800">
-                        {tier.quantity_from === tier.quantity_to 
-                          ? `${tier.quantity_from} ticket`
-                          : `${tier.quantity_from}-${tier.quantity_to} tickets`
-                        }
-                        <span className="ml-2 text-xs text-gray-600">
-                          ({tier.food_option === 'with_food' ? 'With Food' : 'Without Food'})
-                        </span>
-                      </span>
-                      <span className="text-gray-900 font-medium">
-                        ${tier.price_per_ticket.toFixed(2)} each
-                      </span>
-                    </div>
-                  ))}
+            {/* Total Price Preview */}
+            {selectedPricing && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-900">Total Price</h3>
+                    <p className="text-xs text-gray-700">{selectedPricing.quantity} {selectedPricing.quantity === 1 ? 'ticket' : 'tickets'}</p>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">${selectedPricing.total_price.toFixed(2)}</div>
                 </div>
+                <p className="mt-1 text-xs text-gray-600">Rate: ${selectedPricing.price_per_ticket.toFixed(2)} each</p>
               </div>
             )}
 
-            {/* Selected Quantity Pricing */}
-            {selectedPricing && (
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/30 p-4">
-                <div className="text-center">
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">Your Selection</h3>
-                  <div className="text-2xl font-bold text-gray-900">
-                    ${selectedPricing.total_price.toFixed(2)}
-                  </div>
-                  <p className="text-sm text-gray-800">
-                    {selectedPricing.quantity} {selectedPricing.quantity === 1 ? 'ticket' : 'tickets'} × ${selectedPricing.price_per_ticket.toFixed(2)} each
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* Selected Quantity Pricing (kept as total) */}
 
             <button
               type="submit"
