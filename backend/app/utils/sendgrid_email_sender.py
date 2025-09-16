@@ -7,6 +7,7 @@ import base64
 
 from app.config import settings
 from app.utils.supabase_client import supabase_client
+from app.utils.pdf_generator import pdf_generator
 
 
 logger = logging.getLogger(__name__)
@@ -171,17 +172,178 @@ class MinimalSendGridSender:
     async def send_registration_email(self, email: str, name: str, qr_code_url: str, qr_code_id: str, ticket_quantity: int = 1, total_price: float = 0.0) -> bool:
         details = await self.get_current_event_details()
         subject = f"Welcome to {details['name']} - Your QR Code Inside!"
-        html = f"<html><body><h2>Hi {name},</h2><p>Your registration is confirmed. QR: {qr_code_id}</p></body></html>"
+        html = self.create_registration_email_content(
+            name=name,
+            qr_code_url=qr_code_url,
+            qr_code_id=qr_code_id,
+            ticket_quantity=ticket_quantity,
+            total_price=total_price,
+            event_details=details,
+        )
         return await self._send_email(email, subject, html)
 
     async def send_registration_email_with_pdf(self, email: str, name: str, qr_codes_data: list, total_price: float) -> bool:
-        # Expecting caller to provide a generated PDF elsewhere; for now, synthesize a small placeholder
-        # The actual PDF content is generated upstream in Gmail flow; here we rely on router to pass bytes if needed in future.
         details = await self.get_current_event_details()
         subject = f"Welcome to {details['name']} - Your QR Code Tickets Inside!"
-        html = f"<html><body><h2>Hi {name},</h2><p>Your tickets are attached as PDF.</p></body></html>"
-        # No PDF bytes available here; fall back to simple email
-        return await self._send_email(email, subject, html)
+        html = self.create_registration_email_with_pdf_content(
+            name=name,
+            ticket_count=len(qr_codes_data),
+            total_price=total_price,
+            event_details=details,
+        )
+        # Generate PDF attachment like Gmail flow
+        pdf_bytes = pdf_generator.generate_qr_tickets_pdf(qr_codes_data, details['name'])
+        return await self._send_email_with_pdf(
+            to_email=email,
+            subject=subject,
+            html_content=html,
+            pdf_bytes=pdf_bytes,
+            filename=f"{name}_tickets.pdf",
+        )
+
+    # -------- Rich HTML builders (mirroring Gmail templates) --------
+    def create_registration_email_content(
+        self,
+        name: str,
+        qr_code_url: str,
+        qr_code_id: str,
+        ticket_quantity: int = 1,
+        total_price: float = 0.0,
+        event_details: dict | None = None,
+    ) -> str:
+        if event_details is None:
+            event_details = {
+                "name": settings.event_name,
+                "date": settings.event_date,
+                "location": "TBD",
+            }
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset=\"utf-8\">
+            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+            <title>Welcome to {event_details['name']}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: transparent; color: inherit; padding: 0; text-align: center; border-radius: 8px 8px 0 0; overflow: hidden; }}
+                .content {{ background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .qr-code {{ text-align: center; margin: 30px 0; }}
+                .qr-code img {{ max-width: 200px; height: auto; border: 2px solid #e5e7eb; border-radius: 8px; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }}
+                .info-box {{ background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class=\"container\">
+                <div class=\"header\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                </div>
+                <div class=\"content\">
+                    <h2>Your Registration is Confirmed!</h2>
+                    <p>We're excited to have you join us for {event_details['name']} on {event_details['date']}.</p>
+                    <div class=\"info-box\">
+                        <h4>Ticket Information:</h4>
+                        <p><strong>Number of Tickets:</strong> {ticket_quantity}</p>
+                        <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
+                    </div>
+                    <div class=\"qr-code\">
+                        <img src=\"{qr_code_url}\" alt=\"QR Code\" />
+                        <p style=\"font-size:12px;color:#6b7280\">{qr_code_id}</p>
+                    </div>
+                    <div class=\"info-box\">
+                        <h4>Important Information:</h4>
+                        <ul>
+                            <li>Save this QR code to your phone or print this email</li>
+                            <li>Arrive 15 minutes early for check-in</li>
+                            <li>Contact us if you have any questions</li>
+                        </ul>
+                    </div>
+                    <div class=\"footer\">
+                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p><em>This is an automated message. Please do not reply to this email.</em></p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+    def create_registration_email_with_pdf_content(
+        self,
+        name: str,
+        ticket_count: int,
+        total_price: float,
+        event_details: dict | None = None,
+    ) -> str:
+        if event_details is None:
+            event_details = {
+                "name": settings.event_name,
+                "date": settings.event_date,
+                "location": "TBD",
+            }
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset=\"utf-8\">
+            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+            <title>Welcome to {event_details['name']}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: transparent; color: inherit; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background-color: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }}
+                .info-box {{ background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; }}
+                .pdf-box {{ background-color: #fef3c7; border: 2px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center; }}
+            </style>
+        </head>
+        <body>
+            <div class=\"container\">
+                <div class=\"header\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                </div>
+                <div class=\"content\">
+                    <h2>Your Registration is Confirmed!</h2>
+                    <p>We're excited to have you join us for {event_details['name']} on 18th October 2025 5:00 PM.</p>
+                    <div class=\"info-box\">
+                        <h4>Ticket Information:</h4>
+                        <p><strong>Number of Tickets:</strong> {ticket_count}</p>
+                        <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
+                    </div>
+                    <div class=\"pdf-box\">
+                        <h3>📄 Your QR Code Tickets</h3>
+                        <p>Your QR code tickets have been attached to this email as a PDF file.</p>
+                        <p>Each ticket contains a unique QR code that will be scanned at check-in.</p>
+                    </div>
+                    <p>If you can't access the PDF attachment, please contact us immediately.</p>
+                    <div class=\"info-box\">
+                        <h4>Terms and Conditions:</h4>
+                        <ul style=\"font-size: 12px; line-height: 1.4;\">
+                            <li>No exchange or refund. Unauthorized sale of tickets is prohibited.</li>
+                            <li>ISO reserves the right of admission and entry.</li>
+                            <li>Consumption and possession of alcohol and narcotics are strictly prohibited.</li>
+                            <li>Everyone must present the QR code received in their email at the time of the event to receive their wristbands.</li>
+                            <li>Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.</li>
+                            <li>By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.</li>
+                            <li>ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.</li>
+                            <li>Ticket categories are final and cannot be changed or upgraded after purchase.</li>
+                            <li>Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.</li>
+                            <li>ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.</li>
+                            <li>Terms and conditions are subject to change at the discretion of ISO.</li>
+                        </ul>
+                    </div>
+                    <div class=\"footer\">
+                        <p>Thank you for volunteering! We look forward to seeing you at the event.</p>
+                        <p><em>This is an automated message. Please do not reply to this email.</em></p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
 
 """SendGrid email integration utilities (replacement for Gmail senders)."""
 
