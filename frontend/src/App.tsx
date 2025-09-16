@@ -33,7 +33,7 @@ const App: React.FC = () => {
           <main className="flex-1 relative z-10 bg-transparent">
             <Routes>
               {/* Public Routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Navigate to={localStorage.getItem('volunteer_app_token') ? window.location.pathname || '/registration' : '/login'} replace />} />
               <Route path="/login" element={<Login />} />
               <Route
                 path="/registration"

@@ -24,7 +24,12 @@ const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      navigate('/registration');
+      const user = getCurrentUser();
+      if (user?.role === 'president') {
+        navigate('/dashboard');
+      } else {
+        navigate('/registration');
+      }
     }
   }, [isAuthenticated, getCurrentUser, navigate]);
 
@@ -42,9 +47,15 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
-      await login(formData);
+      const data = await login(formData);
+      // Immediate role-based redirect
+      if (data.user.role === 'president') {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/registration', { replace: true });
+      }
       setStatus(ApiStatus.SUCCESS);
-      // Navigation will be handled by the useEffect above
+      return;
     } catch (error: any) {
       setStatus(ApiStatus.ERROR);
       setError(error.message || 'Login failed. Please try again.');
