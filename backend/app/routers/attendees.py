@@ -18,7 +18,7 @@ from app.models.attendee import (
 )
 from app.utils.supabase_client import supabase_client
 from app.utils.qr_generator import qr_generator
-from app.utils.gmail_email_sender import gmail_email_sender
+from app.utils.email_provider import get_email_sender
 from app.utils.auth import get_current_president, get_current_volunteer_or_president
 from app.models.auth import TokenData
 
@@ -184,7 +184,8 @@ async def send_registration_email_task(
     """Background task to send registration email."""
     try:
         logger.info(f"Starting to send registration email to: {email}")
-        result = await gmail_email_sender.send_registration_email(
+        sender = get_email_sender()
+        result = await sender.send_registration_email(
             email, name, qr_code_url, qr_code_id, ticket_quantity, total_price
         )
         if result:
@@ -205,7 +206,8 @@ async def send_registration_email_with_pdf_task(
     """Background task to send registration email with PDF attachment."""
     try:
         logger.info(f"Starting to send registration email with PDF to: {email}")
-        result = await gmail_email_sender.send_registration_email_with_pdf(
+        sender = get_email_sender()
+        result = await sender.send_registration_email_with_pdf(
             email, name, qr_codes_data, total_price
         )
         if result:
@@ -416,8 +418,9 @@ async def checkin_attendee(
             )
         
         # Send check-in confirmation email in background
+        sender = get_email_sender()
         background_tasks.add_task(
-            gmail_email_sender.send_checkin_confirmation,
+            sender.send_checkin_confirmation,
             updated_attendee["email"],
             updated_attendee["name"]
         )

@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     secret_key: str
     cors_origins: str = "http://localhost:5173"
+    email_provider: str = "gmail"  # gmail | sendgrid
     
     # Default Passwords (for development/testing)
     default_volunteer_password: str
