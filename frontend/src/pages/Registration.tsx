@@ -2,8 +2,8 @@
  * Registration page - React component.
  */
 
-import React, { useState, useEffect } from 'react';
-import { AttendeeCreate, AttendeeResponse, FormErrors, ApiStatus, TicketPricingInfo, TicketCalculationResponse } from '../types';
+import React, { useState } from 'react';
+import { AttendeeCreate, AttendeeResponse, FormErrors, ApiStatus, TicketCalculationResponse } from '../types';
 import { attendeeRegistrationValidator, formatPhoneNumber } from '../utils/validation';
 import { useApiClient } from '../hooks/useApiClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,32 +20,12 @@ const Registration: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
   const [successData, setSuccessData] = useState<AttendeeResponse | null>(null);
-  const [pricingInfo, setPricingInfo] = useState<TicketPricingInfo | null>(null);
   const [selectedPricing, setSelectedPricing] = useState<TicketCalculationResponse | null>(null);
   const [, setLoadingPricing] = useState(false);
 
   const apiClient = useApiClient();
   const { isPresident, isAuthenticated } = useAuth();
 
-  // Fetch pricing information on component mount
-  useEffect(() => {
-    fetchPricingInfo();
-  }, []);
-
-  const fetchPricingInfo = async () => {
-    try {
-      // Get the first available event ID from the backend
-      const eventsResponse = await apiClient.get<{id: string, name: string}[]>('/api/events');
-      if (eventsResponse && eventsResponse.length > 0) {
-        const eventId = eventsResponse[0].id;
-        const response = await apiClient.get<TicketPricingInfo>(`/api/pricing/tiers?event_id=${eventId}`);
-        setPricingInfo(response);
-      }
-    } catch (error) {
-      console.error('Failed to fetch pricing info:', error);
-      // Continue without pricing info
-    }
-  };
 
   const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food') => {
     if (quantity < 1 || quantity > 20) return;
@@ -406,23 +386,61 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ attendee, onReset }) =>
         </div>
 
         <div className="bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 p-4 mb-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Your QR Code</h2>
-          {attendee.qr_code_url && (
-            <div className="mb-4">
-              <img 
-                src={attendee.qr_code_url} 
-                alt="Your QR Code" 
-                className="mx-auto w-40 h-40 sm:w-48 sm:h-48 border border-white/20 rounded-lg bg-white/5 p-2"
-              />
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3">Registration Details</h2>
+          
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-700">Name:</span>
+              <span className="text-sm font-medium text-gray-900">{attendee.name}</span>
             </div>
-          )}
-          <p className="text-sm text-gray-700 mb-2">
-            QR Code ID: <span className="font-mono text-gray-900">{attendee.qr_code_id}</span>
-          </p>
-          <p className="text-xs text-gray-600">
-            Save this QR code for quick check-in at the event. An email with your QR code has been sent to {attendee.email}.
-            </p>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-700">Email:</span>
+              <span className="text-sm font-medium text-gray-900">{attendee.email}</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-700">Tickets:</span>
+              <span className="text-sm font-medium text-gray-900">
+                {attendee.ticket_quantity} {attendee.ticket_quantity === 1 ? 'ticket' : 'tickets'}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-700">Food Option:</span>
+              <span className="text-sm font-medium text-gray-900">
+                {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-700">Payment:</span>
+              <span className="text-sm font-medium text-gray-900 capitalize">{attendee.payment_mode}</span>
+            </div>
+            
+            <div className="flex justify-between items-center border-t border-white/10 pt-3">
+              <span className="text-sm font-medium text-gray-700">Total Paid:</span>
+              <span className="text-sm font-bold text-gray-900">${attendee.total_price.toFixed(2)}</span>
+            </div>
           </div>
+        </div>
+
+        <div className="bg-green-50/50 backdrop-blur-sm rounded-lg border border-green-200/30 p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-green-800 mb-1">QR Code Sent to Email</h3>
+              <p className="text-sm text-green-700">
+                Your QR code has been sent to <span className="font-medium">{attendee.email}</span>. 
+                Please check your email and save the QR code for quick check-in at the event.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-3">
             <button

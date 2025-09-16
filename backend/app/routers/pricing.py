@@ -82,7 +82,8 @@ async def calculate_ticket_price(
                     quantity_from=tier_data["quantity_from"],
                     quantity_to=tier_data["quantity_to"],
                     price_per_ticket=price_per_ticket,
-                    total_price=price_per_ticket * request.quantity
+                    total_price=price_per_ticket * request.quantity,
+                    food_option=request.food_option
                 )
                 break
         
@@ -133,6 +134,8 @@ async def get_admin_pricing_tiers(
                 quantity_from=tier_data["quantity_from"],
                 quantity_to=tier_data["quantity_to"],
                 price_per_ticket=float(tier_data["price_per_ticket"]),
+                is_active=tier_data["is_active"],
+                food_option=tier_data["food_option"],
                 created_at=tier_data["created_at"],
                 updated_at=tier_data["updated_at"]
             )
@@ -170,7 +173,9 @@ async def create_pricing_tier(
             "event_id": tier_data.event_id,
             "quantity_from": tier_data.quantity_from,
             "quantity_to": tier_data.quantity_to,
-            "price_per_ticket": tier_data.price_per_ticket
+            "price_per_ticket": tier_data.price_per_ticket,
+            "is_active": tier_data.is_active,
+            "food_option": tier_data.food_option
         }
         
         response = supabase_client.client.table("ticket_pricing").insert(new_tier_data).execute()
@@ -188,6 +193,8 @@ async def create_pricing_tier(
             quantity_from=created_tier["quantity_from"],
             quantity_to=created_tier["quantity_to"],
             price_per_ticket=float(created_tier["price_per_ticket"]),
+            is_active=created_tier["is_active"],
+            food_option=created_tier["food_option"],
             created_at=created_tier["created_at"],
             updated_at=created_tier["updated_at"]
         )

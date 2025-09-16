@@ -258,13 +258,27 @@ async def register_attendee(
                     detail="No pricing tiers found for this event"
                 )
             
-            # Find the appropriate pricing tier
+            # Find the appropriate pricing tier based on food option and quantity
             price_per_ticket = None
             for tier_data in pricing_response.data:
+                # Check if quantity is within range
                 if (attendee.ticket_quantity >= tier_data["quantity_from"] and 
                     attendee.ticket_quantity <= tier_data["quantity_to"]):
-                    price_per_ticket = float(tier_data["price_per_ticket"])
-                    break
+                    
+                    # Determine price based on food option
+                    if "food_option" in tier_data:
+                        if tier_data["food_option"] == attendee.food_option:
+                            price_per_ticket = float(tier_data["price_per_ticket"])
+                            break
+                    else:
+                        # No food_option column - use price mapping
+                        # $15.00 = without_food, $18.00 = with_food
+                        if attendee.food_option == "without_food" and float(tier_data["price_per_ticket"]) == 15.00:
+                            price_per_ticket = 15.00
+                            break
+                        elif attendee.food_option == "with_food" and float(tier_data["price_per_ticket"]) == 18.00:
+                            price_per_ticket = 18.00
+                            break
             
             if price_per_ticket is None:
                 raise HTTPException(
