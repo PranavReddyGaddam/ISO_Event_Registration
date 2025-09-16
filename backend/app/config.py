@@ -23,8 +23,7 @@ class Settings(BaseSettings):
     # Application Configuration
     environment: str = "development"
     secret_key: str
-    cors_origins: str
-    cors_origin_regex: str | None = None
+    cors_origins: str = "http://localhost:5173"
     
     # Default Passwords (for development/testing)
     default_volunteer_password: str
@@ -36,9 +35,7 @@ class Settings(BaseSettings):
     @validator("cors_origins")
     def parse_cors_origins(cls, v: str) -> list[str]:
         """Parse CORS origins from comma-separated string."""
-        if not v or not v.strip():
-            return []
-        return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return [origin.strip() for origin in v.split(",")]
     
     class Config:
         env_file = ".env"
