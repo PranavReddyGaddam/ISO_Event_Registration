@@ -308,7 +308,7 @@ class MinimalSendGridSender:
                 </div>
                 <div class=\"content\">
                     <h2>Your Registration is Confirmed!</h2>
-                    <p>We're excited to have you join us for {event_details['name']} on 18th October 2025 5:00 PM.</p>
+                    <p>We're excited to have you join us for {event_details['name']} on 18th October 2025 4:00 PM.</p>
                     <div class=\"info-box\">
                         <h4>Ticket Information:</h4>
                         <p><strong>Number of Tickets:</strong> {ticket_count}</p>
