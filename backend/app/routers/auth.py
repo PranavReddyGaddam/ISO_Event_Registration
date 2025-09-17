@@ -9,7 +9,8 @@ from app.models.auth import (
     UserResponse, 
     ChangePassword, 
     UserCreate,
-    TokenData
+    TokenData,
+    UpdateClearedAmount
 )
 from app.utils.auth import (
     verify_password, 
@@ -252,4 +253,60 @@ async def get_all_users(current_user: TokenData = Depends(get_current_president)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get users"
+        )
+
+
+@router.patch("/users/{user_id}/cleared-amount", response_model=UserResponse)
+async def update_cleared_amount(
+    user_id: str,
+    cleared_data: UpdateClearedAmount,
+    current_user: TokenData = Depends(get_current_president)
+):
+    """Update the cleared amount for a volunteer (president only)."""
+    try:
+        # Get the user to verify they exist and are a volunteer
+        user = await supabase_client.get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Only allow updating cleared amount for volunteers
+        if user.get("role") != "volunteer":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only update cleared amount for volunteers"
+            )
+        
+        # Update the cleared amount
+        updated_user = await supabase_client.update_user_cleared_amount(
+            user_id=user_id,
+            cleared_amount=cleared_data.cleared_amount
+        )
+        
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update cleared amount"
+            )
+        
+        return UserResponse(
+            id=updated_user["id"],
+            email=updated_user["email"],
+            full_name=updated_user["full_name"],
+            role=updated_user["role"],
+            is_active=updated_user["is_active"],
+            cleared_amount=updated_user["cleared_amount"],
+            created_at=updated_user["created_at"],
+            last_login=updated_user.get("last_login")
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update cleared amount error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update cleared amount"
         )

@@ -61,6 +61,12 @@ class AttendeeResponse(AttendeeBase):
     is_checked_in: bool = False
     qr_code_url: Optional[str] = None
     
+    # Volunteer information (who sold the ticket)
+    created_by: Optional[str] = None
+    volunteer_name: Optional[str] = None
+    volunteer_email: Optional[str] = None
+    volunteer_team_role: Optional[str] = None
+    
     # Grouped view fields (optional - only present in grouped responses)
     total_tickets_per_person: Optional[int] = None
     total_registrations: Optional[int] = None

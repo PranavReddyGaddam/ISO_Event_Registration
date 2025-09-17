@@ -19,6 +19,7 @@ class UserBase(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool = True
+    cleared_amount: float = 0.0
     
     @validator("full_name")
     def validate_full_name(cls, v: str) -> str:
@@ -96,3 +97,15 @@ class UserUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("Full name cannot be empty")
         return v.strip() if v else None
+
+
+class UpdateClearedAmount(BaseModel):
+    """Model for updating cleared amount."""
+    cleared_amount: float
+    
+    @validator("cleared_amount")
+    def validate_cleared_amount(cls, v: float) -> float:
+        """Validate cleared amount is non-negative."""
+        if v < 0:
+            raise ValueError("Cleared amount cannot be negative")
+        return v

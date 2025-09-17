@@ -118,8 +118,8 @@ async def get_attendees_by_email(
 async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president)):
     """Get all volunteers with their registration statistics."""
     try:
-        # First, get all volunteer users (role = 'volunteer')
-        volunteers_resp = supabase_client.service_client.table("users").select("id, full_name, email, team_role").eq("role", "volunteer").execute()
+        # First, get all volunteer users (role = 'volunteer') and president
+        volunteers_resp = supabase_client.service_client.table("users").select("id, full_name, email, team_role, role, cleared_amount").in_("role", ["volunteer", "president"]).execute()
         volunteers = volunteers_resp.data or []
         
         # Then get attendees data for statistics
@@ -160,11 +160,20 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 "zelle_amount": 0.0,
             })
             
+            # Calculate total amount collected and pending amount
+            total_collected = stats["cash_amount"] + stats["zelle_amount"]
+            cleared_amount = float(volunteer.get("cleared_amount", 0.0))
+            pending_amount = total_collected - cleared_amount
+            
             result.append({
                 "volunteer_id": vid,
                 "full_name": volunteer.get("full_name"),
                 "email": volunteer.get("email"),
-                "team_role": volunteer.get("team_role"),
+                "team_role": volunteer.get("team_role") if volunteer.get("role") == "volunteer" else "President",
+                "user_role": volunteer.get("role"),
+                "cleared_amount": cleared_amount,
+                "total_collected": total_collected,
+                "pending_amount": pending_amount,
                 **stats
             })
         

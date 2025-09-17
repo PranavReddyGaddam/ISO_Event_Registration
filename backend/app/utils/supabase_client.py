@@ -128,6 +128,48 @@ class SupabaseClient:
             logger.error(f"Error updating attendee check-in: {e}")
             return None
     
+    async def _enrich_attendees_with_volunteer_info(self, attendees: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Enrich attendee data with volunteer information."""
+        if not attendees:
+            return attendees
+        
+        # Get unique volunteer IDs
+        volunteer_ids = set()
+        for attendee in attendees:
+            if attendee.get("created_by"):
+                volunteer_ids.add(attendee["created_by"])
+        
+        if not volunteer_ids:
+            return attendees
+        
+        # Fetch volunteer information
+        try:
+            volunteers_resp = self.service_client.table("users").select("id, full_name, email, team_role").in_("id", list(volunteer_ids)).execute()
+            volunteers = {v["id"]: v for v in volunteers_resp.data or []}
+            
+            # Enrich attendee data
+            for attendee in attendees:
+                volunteer_id = attendee.get("created_by")
+                if volunteer_id and volunteer_id in volunteers:
+                    volunteer = volunteers[volunteer_id]
+                    attendee["volunteer_name"] = volunteer.get("full_name")
+                    attendee["volunteer_email"] = volunteer.get("email")
+                    attendee["volunteer_team_role"] = volunteer.get("team_role")
+                else:
+                    attendee["volunteer_name"] = None
+                    attendee["volunteer_email"] = None
+                    attendee["volunteer_team_role"] = None
+            
+        except Exception as e:
+            logger.error(f"Error enriching attendees with volunteer info: {e}")
+            # If enrichment fails, just add None values
+            for attendee in attendees:
+                attendee["volunteer_name"] = None
+                attendee["volunteer_email"] = None
+                attendee["volunteer_team_role"] = None
+        
+        return attendees
+
     async def get_attendees(
         self, 
         checked_in: Optional[bool] = None,
@@ -173,7 +215,10 @@ class SupabaseClient:
                 grouped_results.sort(key=lambda x: x.get("total_tickets_per_person", 0), reverse=True)
                 total_count = len(grouped_results)
                 paginated_results = grouped_results[offset:offset + limit]
-                return paginated_results, total_count
+                
+                # Enrich with volunteer information
+                enriched_results = await self._enrich_attendees_with_volunteer_info(paginated_results)
+                return enriched_results, total_count
             
             # If no search, use the normal query approach
             query = self.client.table("attendees").select("*", count="exact")
@@ -196,7 +241,10 @@ class SupabaseClient:
             # Apply pagination to grouped results
             total_count = len(grouped_attendees)
             paginated_results = grouped_attendees[offset:offset + limit]
-            return paginated_results, total_count
+            
+            # Enrich with volunteer information
+            enriched_results = await self._enrich_attendees_with_volunteer_info(paginated_results)
+            return enriched_results, total_count
         except Exception as e:
             logger.error(f"Error getting attendees: {e}")
             return [], 0
@@ -286,7 +334,11 @@ class SupabaseClient:
             query = self.client.table("attendees").select("*", count="exact").eq("email", email)
             
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
-            return response.data or [], response.count or 0
+            attendees = response.data or []
+            
+            # Enrich with volunteer information
+            enriched_attendees = await self._enrich_attendees_with_volunteer_info(attendees)
+            return enriched_attendees, response.count or 0
         except Exception as e:
             logger.error(f"Error getting attendees by email: {e}")
             return [], 0
@@ -302,7 +354,11 @@ class SupabaseClient:
             query = self.client.table("attendees").select("*", count="exact").eq("created_by", volunteer_id)
             
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
-            return response.data or [], response.count or 0
+            attendees = response.data or []
+            
+            # Enrich with volunteer information
+            enriched_attendees = await self._enrich_attendees_with_volunteer_info(attendees)
+            return enriched_attendees, response.count or 0
         except Exception as e:
             logger.error(f"Error getting attendees by volunteer: {e}")
             return [], 0
@@ -433,6 +489,20 @@ class SupabaseClient:
         except Exception as e:
             logger.error(f"Error getting all users: {e}")
             return []
+    
+    async def update_user_cleared_amount(self, user_id: str, cleared_amount: float) -> Optional[Dict[str, Any]]:
+        """Update the cleared amount for a user."""
+        try:
+            response = self.service_client.table("users").update({
+                "cleared_amount": cleared_amount
+            }).eq("id", user_id).execute()
+            
+            if response.data:
+                return response.data[0]
+            return None
+        except Exception as e:
+            logger.error(f"Error updating user cleared amount: {e}")
+            return None
     
     async def initialize_default_users(self) -> None:
         """Initialize default users if none exist."""

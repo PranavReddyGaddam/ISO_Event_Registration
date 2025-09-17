@@ -17,6 +17,12 @@ export interface Attendee {
   is_checked_in: boolean;
   qr_code_url?: string;
   
+  // Volunteer information (who sold the ticket)
+  created_by?: string;
+  volunteer_name?: string;
+  volunteer_email?: string;
+  volunteer_team_role?: string;
+  
   // Grouped view fields (optional - only present in grouped responses)
   total_tickets_per_person?: number;
   total_registrations?: number;
@@ -29,7 +35,13 @@ export interface Attendee {
   checked_in_registrations?: number;
 }
 
-export interface AttendeeResponse extends Attendee {}
+export interface AttendeeResponse extends Attendee {
+  // Explicitly include volunteer fields for TypeScript
+  created_by?: string;
+  volunteer_name?: string;
+  volunteer_email?: string;
+  volunteer_team_role?: string;
+}
 
 export interface AttendeeCreate {
   name: string;

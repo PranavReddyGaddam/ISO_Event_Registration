@@ -9,6 +9,7 @@ import PricingManager from '../components/PricingManager';
 import VolunteerApplicationsManager from '../components/VolunteerApplicationsManager';
 import EventManager from '../components/EventManager';
 import TabbedTables from '../components/TabbedTables';
+import UpdateClearedAmountModal from '../components/UpdateClearedAmountModal';
 
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<EventStats | null>(null);
@@ -24,7 +25,6 @@ const Dashboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<keyof AttendeeResponse | 'registered_at' | 'checked_in_date' | 'checked_in_time'>('created_at' as any);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showPricingManager, setShowPricingManager] = useState(false);
   const [showVolunteerApplications, setShowVolunteerApplications] = useState(false);
   const [showEventManager, setShowEventManager] = useState(false);
@@ -36,6 +36,11 @@ const Dashboard: React.FC = () => {
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [emailAttendees, setEmailAttendees] = useState<AttendeeResponse[]>([]);
   const [emailAttendeesPagination, setEmailAttendeesPagination] = useState<PaginationMeta | null>(null);
+  
+  // Cleared amount modal state
+  const [showClearedAmountModal, setShowClearedAmountModal] = useState(false);
+  const [selectedVolunteerForClearing, setSelectedVolunteerForClearing] = useState<any | null>(null);
+  const [isUpdatingClearedAmount, setIsUpdatingClearedAmount] = useState(false);
 
   const apiClient = useApiClient();
 
@@ -80,7 +85,6 @@ const Dashboard: React.FC = () => {
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
     setFilter(prev => ({
       ...prev,
       search: query,
@@ -97,23 +101,36 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleFilterChange = (filterType: 'all' | 'checked_in' | 'not_checked_in') => {
+  const handleFilterChange = (filterType: 'all' | 'checked_in' | 'not_checked_in' | 'with_food' | 'without_food') => {
     let checked_in: boolean | undefined;
+    let food_option: string | undefined;
     
     switch (filterType) {
       case 'checked_in':
         checked_in = true;
+        food_option = undefined;
         break;
       case 'not_checked_in':
         checked_in = false;
+        food_option = undefined;
         break;
-      default:
+      case 'with_food':
         checked_in = undefined;
+        food_option = 'with_food';
+        break;
+      case 'without_food':
+        checked_in = undefined;
+        food_option = 'without_food';
+        break;
+      default: // 'all'
+        checked_in = undefined;
+        food_option = undefined;
     }
 
     setFilter(prev => ({
       ...prev,
       checked_in,
+      food_option,
       offset: 0
     }));
   };
@@ -198,6 +215,33 @@ const Dashboard: React.FC = () => {
     setSelectedEmail(null);
     setEmailAttendees([]);
     setEmailAttendeesPagination(null);
+  };
+
+  const handleUpdateClearedAmount = (volunteer: any) => {
+    setSelectedVolunteerForClearing(volunteer);
+    setShowClearedAmountModal(true);
+  };
+
+  const handleCloseClearedAmountModal = () => {
+    setShowClearedAmountModal(false);
+    setSelectedVolunteerForClearing(null);
+  };
+
+  const handleUpdateClearedAmountSubmit = async (volunteerId: string, clearedAmount: number) => {
+    setIsUpdatingClearedAmount(true);
+    try {
+      await apiClient.patch(`/api/auth/users/${volunteerId}/cleared-amount`, {
+        cleared_amount: clearedAmount
+      });
+      
+      // Refresh the volunteer summary to show updated amounts
+      await loadData();
+    } catch (error) {
+      console.error('Failed to update cleared amount:', error);
+      throw error;
+    } finally {
+      setIsUpdatingClearedAmount(false);
+    }
   };
 
   if (status === ApiStatus.LOADING && !stats) {
@@ -302,89 +346,23 @@ const Dashboard: React.FC = () => {
           onEmailClick={handleEmailClick}
           onEmailAttendeesPageChange={handleEmailAttendeesPageChange}
           onBackToAttendees={handleBackToAttendees}
+          filter={filter}
+          searchQuery={filter.search || ''}
+          onFilterChange={handleFilterChange}
+          onSearchChange={handleSearch}
+          onRefresh={loadData}
+          isLoading={status === ApiStatus.LOADING}
+          onUpdateClearedAmount={handleUpdateClearedAmount}
         />
 
-        {/* Filters */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 mb-4 sm:mb-6 p-4 sm:p-6">
-          <div className="flex flex-col space-y-4">
-            {/* Filter Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleFilterChange('all')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter.checked_in === undefined
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleFilterChange('checked_in')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter.checked_in === true
-                    ? 'bg-green-600 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                }`}
-              >
-                Checked In
-              </button>
-              <button
-                onClick={() => handleFilterChange('not_checked_in')}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter.checked_in === false
-                    ? 'bg-yellow-600 text-black shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                }`}
-              >
-                Not Checked In
-              </button>
-              <button
-                onClick={() => setFilter(prev => ({ ...prev, food_option: prev.food_option === 'with_food' ? undefined : 'with_food', offset: 0 }))}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter.food_option === 'with_food'
-                    ? 'bg-orange-600 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                }`}
-              >
-                With Food
-              </button>
-              <button
-                onClick={() => setFilter(prev => ({ ...prev, food_option: prev.food_option === 'without_food' ? undefined : 'without_food', offset: 0 }))}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filter.food_option === 'without_food'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                }`}
-              >
-                Without Food
-              </button>
-            </div>
-
-            {/* Search and Refresh */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Search attendees..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-              </div>
-              <button
-                onClick={loadData}
-                disabled={status === ApiStatus.LOADING}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors whitespace-nowrap"
-              >
-                {status === ApiStatus.LOADING ? 'Refreshing...' : 'Refresh'}
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Update Cleared Amount Modal */}
+        <UpdateClearedAmountModal
+          isOpen={showClearedAmountModal}
+          onClose={handleCloseClearedAmountModal}
+          volunteer={selectedVolunteerForClearing}
+          onUpdate={handleUpdateClearedAmountSubmit}
+          isLoading={isUpdatingClearedAmount}
+        />
 
       </div>
     </div>

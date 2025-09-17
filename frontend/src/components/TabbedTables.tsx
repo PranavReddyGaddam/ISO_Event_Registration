@@ -34,6 +34,21 @@ interface TabbedTablesProps {
   onEmailClick: (email: string) => void;
   onEmailAttendeesPageChange: (page: number) => void;
   onBackToAttendees: () => void;
+  
+  // Filter props
+  filter: {
+    checked_in?: boolean;
+    food_option?: string;
+    offset: number;
+  };
+  searchQuery: string;
+  onFilterChange: (filterType: string) => void;
+  onSearchChange: (query: string) => void;
+  onRefresh: () => void;
+  isLoading: boolean;
+  
+  // Cleared amount update
+  onUpdateClearedAmount: (volunteer: any) => void;
 }
 
 const TabbedTables: React.FC<TabbedTablesProps> = ({
@@ -58,10 +73,29 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   onEmailClick,
   onEmailAttendeesPageChange,
   onBackToAttendees,
+  filter,
+  searchQuery,
+  onFilterChange,
+  onSearchChange,
+  onRefresh,
+  isLoading,
+  onUpdateClearedAmount,
 }) => {
   const [activeTab, setActiveTab] = useState<'volunteers' | 'attendees'>('volunteers');
+  const [volunteerSearchQuery, setVolunteerSearchQuery] = useState('');
 
   const formatTimeOnly = (ts?: string) => (ts ? new Date(ts).toLocaleTimeString() : '-');
+
+  // Filter volunteers based on search query
+  const filteredVolunteers = volunteerSummary?.filter(volunteer => {
+    if (!volunteerSearchQuery) return true;
+    const query = volunteerSearchQuery.toLowerCase();
+    return (
+      (volunteer.full_name?.toLowerCase().includes(query)) ||
+      (volunteer.email?.toLowerCase().includes(query)) ||
+      (volunteer.team_role?.toLowerCase().includes(query))
+    );
+  }) || [];
 
   // Sort attendees for display
   const sortedAttendees = [...attendees].sort((a, b) => {
@@ -334,7 +368,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                 : 'text-gray-700 hover:text-gray-900 hover:bg-white/10'
             }`}
           >
-            Volunteers ({volunteerSummary?.length || 0})
+            Sales Team ({volunteerSummary?.length || 0})
           </button>
           <button
             onClick={() => setActiveTab('attendees')}
@@ -355,28 +389,96 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
           // Volunteers Tab Content
           volunteerSummary && volunteerSummary.length > 0 ? (
             <>
+              {/* Search Bar */}
+              <div className="px-4 sm:px-6 py-4 border-b border-white/20">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search sales team by name, email, or role..."
+                    value={volunteerSearchQuery}
+                    onChange={(e) => setVolunteerSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
               {/* Desktop Volunteers Table */}
               <div className="hidden lg:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Volunteer</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales Person</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (count/amount)</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zelle (count/amount)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cleared</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {volunteerSummary.map((v) => (
-                      <tr key={v.volunteer_id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onVolunteerClick(v)}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.full_name || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.email || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.team_role || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.total_attendees}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.cash_count} / ${v.cash_amount.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{v.zelle_count} / ${v.zelle_amount.toFixed(2)}</td>
+                    {filteredVolunteers.map((v) => (
+                      <tr key={v.volunteer_id} className={`hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : ''}`}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          <div className="flex items-center">
+                            {v.full_name || '-'}
+                            {v.user_role === 'president' && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                President
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          {v.email || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          {v.team_role || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          {v.total_attendees}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          {v.cash_count} / ${v.cash_amount.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          {v.zelle_count} / ${v.zelle_amount.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          <div className="flex items-center">
+                            <span className="text-green-600 font-semibold">
+                              ${(v.cleared_amount || 0).toFixed(2)}
+                            </span>
+                            {v.user_role === 'volunteer' && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpdateClearedAmount(v);
+                                }}
+                                className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
+                              >
+                                Update
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                          <div className={`font-semibold ${
+                            (v.pending_amount || 0) === 0 
+                              ? 'text-green-600' 
+                              : (v.pending_amount || 0) === (v.total_collected || 0)
+                                ? 'text-red-600'
+                                : 'text-yellow-600'
+                          }`}>
+                            ${(v.pending_amount || 0).toFixed(2)}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -386,11 +488,18 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
               {/* Mobile Volunteers Cards */}
               <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
-                  {volunteerSummary.map((v) => (
-                    <div key={v.volunteer_id} className="p-4 bg-white cursor-pointer hover:bg-gray-50" onClick={() => onVolunteerClick(v)}>
+                  {filteredVolunteers.map((v) => (
+                    <div key={v.volunteer_id} className={`p-4 cursor-pointer hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : 'bg-white'}`} onClick={() => onVolunteerClick(v)}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <h3 className="text-sm font-medium text-gray-900">{v.full_name || 'Unnamed Volunteer'}</h3>
+                          <div className="flex items-center">
+                            <h3 className="text-sm font-medium text-gray-900">{v.full_name || 'Unnamed Volunteer'}</h3>
+                            {v.user_role === 'president' && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                President
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">{v.email || '-'}</p>
                           {v.team_role && (
                             <p className="text-xs text-gray-600 mt-1">Role: {v.team_role}</p>
@@ -414,6 +523,50 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                           <div className="text-blue-600">${v.zelle_amount.toFixed(2)}</div>
                         </div>
                       </div>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                        <div className="bg-emerald-50 p-3 rounded-lg">
+                          <div className="text-emerald-800 font-medium">Cleared</div>
+                          <div className="text-emerald-600 font-semibold">${(v.cleared_amount || 0).toFixed(2)}</div>
+                          {v.user_role === 'volunteer' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onUpdateClearedAmount(v);
+                              }}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                            >
+                              Update
+                            </button>
+                          )}
+                        </div>
+                        <div className={`p-3 rounded-lg ${
+                          (v.pending_amount || 0) === 0 
+                            ? 'bg-green-50' 
+                            : (v.pending_amount || 0) === (v.total_collected || 0)
+                              ? 'bg-red-50'
+                              : 'bg-yellow-50'
+                        }`}>
+                          <div className={`font-medium ${
+                            (v.pending_amount || 0) === 0 
+                              ? 'text-green-800' 
+                              : (v.pending_amount || 0) === (v.total_collected || 0)
+                                ? 'text-red-800'
+                                : 'text-yellow-800'
+                          }`}>
+                            Pending
+                          </div>
+                          <div className={`font-semibold ${
+                            (v.pending_amount || 0) === 0 
+                              ? 'text-green-600' 
+                              : (v.pending_amount || 0) === (v.total_collected || 0)
+                                ? 'text-red-600'
+                                : 'text-yellow-600'
+                          }`}>
+                            ${(v.pending_amount || 0).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -421,12 +574,94 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
             </>
           ) : (
             <div className="px-4 py-12 text-center text-gray-500">
-              No volunteers found.
+              {volunteerSearchQuery ? 'No sales team members match your search criteria.' : 'No sales team members found.'}
             </div>
           )
         ) : (
           // Attendees Tab Content
           <>
+            {/* Attendees Filter and Search */}
+            <div className="px-4 sm:px-6 py-4 border-b border-white/20">
+              <div className="flex flex-col space-y-4">
+                {/* Filter Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => onFilterChange('all')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      filter.checked_in === undefined && filter.food_option === undefined
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => onFilterChange('checked_in')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      filter.checked_in === true
+                        ? 'bg-green-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                    }`}
+                  >
+                    Checked In
+                  </button>
+                  <button
+                    onClick={() => onFilterChange('not_checked_in')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      filter.checked_in === false
+                        ? 'bg-yellow-600 text-black shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                    }`}
+                  >
+                    Not Checked In
+                  </button>
+                  <button
+                    onClick={() => onFilterChange('with_food')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      filter.food_option === 'with_food'
+                        ? 'bg-orange-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                    }`}
+                  >
+                    With Food
+                  </button>
+                  <button
+                    onClick={() => onFilterChange('without_food')}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      filter.food_option === 'without_food'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                    }`}
+                  >
+                    Without Food
+                  </button>
+                </div>
+
+                {/* Search and Refresh */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Search attendees..."
+                      value={searchQuery}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
+                  <button
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition-colors whitespace-nowrap"
+                  >
+                    {isLoading ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Desktop Attendees Table */}
             <div className="hidden lg:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -434,6 +669,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Name" column="name"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Email" column="email"/></th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sold By</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Tickets" column="total_tickets_per_person"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Registrations" column="total_registrations"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Summary</th>
@@ -446,7 +682,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedAttendees.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                         No attendees found.
                       </td>
                     </tr>
@@ -464,6 +700,16 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                           >
                             {attendee.email}
                           </button>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {attendee.volunteer_name ? (
+                            <div className="text-sm">
+                              <div className="font-medium text-gray-900">{attendee.volunteer_name}</div>
+                              <div className="text-xs text-gray-500">{attendee.volunteer_team_role || 'Volunteer'}</div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">Unknown</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                           {attendee.total_tickets_per_person || attendee.ticket_quantity}
@@ -581,6 +827,19 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                           >
                             {attendee.email}
                           </button>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Sold By:</span>
+                          <span className="ml-2 text-gray-900">
+                            {attendee.volunteer_name ? (
+                              <div>
+                                <div className="font-medium">{attendee.volunteer_name}</div>
+                                <div className="text-xs text-gray-500">{attendee.volunteer_team_role || 'Volunteer'}</div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">Unknown</span>
+                            )}
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-500">Payment Summary:</span>
