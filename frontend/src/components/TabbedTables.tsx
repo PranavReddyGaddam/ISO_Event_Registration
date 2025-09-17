@@ -85,6 +85,8 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'volunteers' | 'attendees'>('volunteers');
   const [volunteerSearchQuery, setVolunteerSearchQuery] = useState('');
+  const [volunteerSortBy, setVolunteerSortBy] = useState<'tickets' | 'name'>('tickets');
+  const [volunteerSortDir, setVolunteerSortDir] = useState<'asc' | 'desc'>('desc');
 
   const formatTimeOnly = (ts?: string) => (ts ? new Date(ts).toLocaleTimeString() : '-');
   
@@ -101,6 +103,19 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
       (volunteer.team_role?.toLowerCase().includes(query))
     );
   }) || [];
+
+  // Sort volunteers based on selected criteria
+  const sortedVolunteers = [...filteredVolunteers].sort((a, b) => {
+    if (volunteerSortBy === 'tickets') {
+      const av = Number(a.total_attendees || 0);
+      const bv = Number(b.total_attendees || 0);
+      return volunteerSortDir === 'asc' ? av - bv : bv - av;
+    }
+    const an = String(a.full_name || '').toLowerCase();
+    const bn = String(b.full_name || '').toLowerCase();
+    const cmp = an.localeCompare(bn);
+    return volunteerSortDir === 'asc' ? cmp : -cmp;
+  });
 
   // Sort attendees for display
   const sortedAttendees = [...attendees].sort((a, b) => {
@@ -396,19 +411,39 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
             <>
               {/* Search Bar */}
               <div className="px-4 sm:px-6 py-4 border-b border-white/20">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search sales team by name, email, or role..."
+                      value={volunteerSearchQuery}
+                      onChange={(e) => setVolunteerSearchQuery(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Search sales team by name, email, or role..."
-                    value={volunteerSearchQuery}
-                    onChange={(e) => setVolunteerSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-700">Sort by:</label>
+                    <select
+                      value={volunteerSortBy}
+                      onChange={(e) => setVolunteerSortBy(e.target.value as 'tickets' | 'name')}
+                      className="px-2 py-1 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="tickets">Tickets Sold</option>
+                      <option value="name">Name</option>
+                    </select>
+                    <button
+                      onClick={() => setVolunteerSortDir(prev => prev === 'asc' ? 'desc' : 'asc')}
+                      className="px-2 py-1 border border-gray-300 rounded-md text-sm bg-white hover:bg-gray-50"
+                      title={`Sort ${volunteerSortDir === 'asc' ? 'descending' : 'ascending'}`}
+                    >
+                      {volunteerSortDir === 'asc' ? '↑' : '↓'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -432,7 +467,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredVolunteers.map((v) => (
+                    {sortedVolunteers.map((v) => (
                       <tr key={v.volunteer_id} className={`hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
                           <div className="flex items-center">
@@ -506,7 +541,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
               {/* Mobile Volunteers Cards */}
               <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
-                  {filteredVolunteers.map((v) => (
+                  {sortedVolunteers.map((v) => (
                     <div key={v.volunteer_id} className={`p-4 cursor-pointer hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : 'bg-white'}`} onClick={() => onVolunteerClick(v)}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
