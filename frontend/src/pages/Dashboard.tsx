@@ -346,7 +346,10 @@ const Dashboard: React.FC = () => {
           onEmailClick={handleEmailClick}
           onEmailAttendeesPageChange={handleEmailAttendeesPageChange}
           onBackToAttendees={handleBackToAttendees}
-          filter={filter}
+          filter={{
+            ...filter,
+            offset: filter.offset || 0
+          }}
           searchQuery={filter.search || ''}
           onFilterChange={handleFilterChange}
           onSearchChange={handleSearch}

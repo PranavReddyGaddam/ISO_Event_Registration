@@ -120,6 +120,19 @@ class ApiClient {
     });
   }
 
+  public async patch<T = unknown>(
+    url: string, 
+    data?: unknown,
+    headers?: Record<string, string>
+  ): Promise<T> {
+    return this.request<T>({
+      method: 'PATCH',
+      url,
+      data,
+      headers,
+    });
+  }
+
   public async delete<T = unknown>(
     url: string,
     headers?: Record<string, string>

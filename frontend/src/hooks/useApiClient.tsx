@@ -32,6 +32,14 @@ export const useApiClient = () => {
     return apiClient.put<T>(url, data, headers);
   };
 
+  const authenticatedPatch = async <T = unknown>(
+    url: string, 
+    data?: unknown
+  ): Promise<T> => {
+    const headers = getAuthHeaders();
+    return apiClient.patch<T>(url, data, headers);
+  };
+
   const authenticatedDelete = async <T = unknown>(
     url: string
   ): Promise<T> => {
@@ -43,6 +51,7 @@ export const useApiClient = () => {
     get: authenticatedGet,
     post: authenticatedPost,
     put: authenticatedPut,
+    patch: authenticatedPatch,
     delete: authenticatedDelete,
     // For non-authenticated requests
     publicGet: apiClient.get.bind(apiClient),

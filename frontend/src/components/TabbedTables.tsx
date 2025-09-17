@@ -39,10 +39,10 @@ interface TabbedTablesProps {
   filter: {
     checked_in?: boolean;
     food_option?: string;
-    offset: number;
+    offset?: number;
   };
   searchQuery: string;
-  onFilterChange: (filterType: string) => void;
+  onFilterChange: (filterType: "all" | "checked_in" | "not_checked_in" | "with_food" | "without_food") => void;
   onSearchChange: (query: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
