@@ -38,7 +38,7 @@ const App: React.FC = () => {
               <Route
                 path="/registration"
                 element={
-                  <ProtectedRoute allowedRoles={["president", "volunteer"]}>
+                  <ProtectedRoute allowedRoles={["president", "volunteer", "finance_director"]}>
                     <Registration />
                   </ProtectedRoute>
                 }
@@ -48,7 +48,7 @@ const App: React.FC = () => {
               <Route
                 path="/checkin"
                 element={
-                  <ProtectedRoute allowedRoles={["president", "volunteer"]}>
+                  <ProtectedRoute allowedRoles={["president", "volunteer", "finance_director"]}>
                     <CheckIn />
                   </ProtectedRoute>
                 }
@@ -56,7 +56,7 @@ const App: React.FC = () => {
               <Route
                 path="/dashboard"
                 element={
-                  <ProtectedRoute allowedRoles={["president"]}>
+                  <ProtectedRoute allowedRoles={["president", "finance_director"]}>
                     <Dashboard />
                   </ProtectedRoute>
                 }
@@ -64,7 +64,7 @@ const App: React.FC = () => {
               <Route
                 path="/profile"
                 element={
-                  <ProtectedRoute allowedRoles={["president", "volunteer"]}>
+                  <ProtectedRoute allowedRoles={["president", "volunteer", "finance_director"]}>
                     <Profile />
                   </ProtectedRoute>
                 }

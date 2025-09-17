@@ -11,6 +11,7 @@ class UserRole(str, Enum):
     """User roles in the system."""
     PRESIDENT = "president"
     VOLUNTEER = "volunteer"
+    FINANCE_DIRECTOR = "finance_director"
 
 
 class UserBase(BaseModel):

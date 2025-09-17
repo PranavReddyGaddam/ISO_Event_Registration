@@ -6,6 +6,8 @@ import React, { useState } from 'react';
 import { AttendeeResponse, PaginationMeta } from '../types';
 
 interface TabbedTablesProps {
+  // Role-based permissions
+  
   // Volunteers data
   volunteerSummary: any[] | null;
   
@@ -85,6 +87,9 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   const [volunteerSearchQuery, setVolunteerSearchQuery] = useState('');
 
   const formatTimeOnly = (ts?: string) => (ts ? new Date(ts).toLocaleTimeString() : '-');
+  
+  // Show financial data for all roles
+  const showFinancialData = true;
 
   // Filter volunteers based on search query
   const filteredVolunteers = volunteerSummary?.filter(volunteer => {
@@ -416,10 +421,14 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Team Role</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (count/amount)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zelle (count/amount)</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cleared</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                      {showFinancialData && (
+                        <>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cash (count/amount)</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Zelle (count/amount)</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cleared</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -444,41 +453,45 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
                           {v.total_attendees}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
-                          {v.cash_count} / ${v.cash_amount.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
-                          {v.zelle_count} / ${v.zelle_amount.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
-                          <div className="flex items-center">
-                            <span className="text-green-600 font-semibold">
-                              ${(v.cleared_amount || 0).toFixed(2)}
-                            </span>
-                            {v.user_role === 'volunteer' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onUpdateClearedAmount(v);
-                                }}
-                                className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
-                              >
-                                Update
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
-                          <div className={`font-semibold ${
-                            (v.pending_amount || 0) === 0 
-                              ? 'text-green-600' 
-                              : (v.pending_amount || 0) === (v.total_collected || 0)
-                                ? 'text-red-600'
-                                : 'text-yellow-600'
-                          }`}>
-                            ${(v.pending_amount || 0).toFixed(2)}
-                          </div>
-                        </td>
+                        {showFinancialData && (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                              {v.cash_count} / ${v.cash_amount.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                              {v.zelle_count} / ${v.zelle_amount.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                              <div className="flex items-center">
+                                <span className="text-green-600 font-semibold">
+                                  ${(v.cleared_amount || 0).toFixed(2)}
+                                </span>
+                                {v.user_role === 'volunteer' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdateClearedAmount(v);
+                                    }}
+                                    className="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
+                                  >
+                                    Update
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
+                              <div className={`font-semibold ${
+                                (v.pending_amount || 0) === 0 
+                                  ? 'text-green-600' 
+                                  : (v.pending_amount || 0) === (v.total_collected || 0)
+                                    ? 'text-red-600'
+                                    : 'text-yellow-600'
+                              }`}>
+                                ${(v.pending_amount || 0).toFixed(2)}
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -511,62 +524,66 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="bg-green-50 p-3 rounded-lg">
-                          <div className="text-green-800 font-medium">Cash</div>
-                          <div className="text-green-600">{v.cash_count} registrations</div>
-                          <div className="text-green-600">${v.cash_amount.toFixed(2)}</div>
-                        </div>
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                          <div className="text-blue-800 font-medium">Zelle</div>
-                          <div className="text-blue-600">{v.zelle_count} registrations</div>
-                          <div className="text-blue-600">${v.zelle_amount.toFixed(2)}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm mt-3">
-                        <div className="bg-emerald-50 p-3 rounded-lg">
-                          <div className="text-emerald-800 font-medium">Cleared</div>
-                          <div className="text-emerald-600 font-semibold">${(v.cleared_amount || 0).toFixed(2)}</div>
-                          {v.user_role === 'volunteer' && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onUpdateClearedAmount(v);
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
-                            >
-                              Update
-                            </button>
-                          )}
-                        </div>
-                        <div className={`p-3 rounded-lg ${
-                          (v.pending_amount || 0) === 0 
-                            ? 'bg-green-50' 
-                            : (v.pending_amount || 0) === (v.total_collected || 0)
-                              ? 'bg-red-50'
-                              : 'bg-yellow-50'
-                        }`}>
-                          <div className={`font-medium ${
-                            (v.pending_amount || 0) === 0 
-                              ? 'text-green-800' 
-                              : (v.pending_amount || 0) === (v.total_collected || 0)
-                                ? 'text-red-800'
-                                : 'text-yellow-800'
-                          }`}>
-                            Pending
+                      {showFinancialData && (
+                        <>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="bg-green-50 p-3 rounded-lg">
+                              <div className="text-green-800 font-medium">Cash</div>
+                              <div className="text-green-600">{v.cash_count} registrations</div>
+                              <div className="text-green-600">${v.cash_amount.toFixed(2)}</div>
+                            </div>
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <div className="text-blue-800 font-medium">Zelle</div>
+                              <div className="text-blue-600">{v.zelle_count} registrations</div>
+                              <div className="text-blue-600">${v.zelle_amount.toFixed(2)}</div>
+                            </div>
                           </div>
-                          <div className={`font-semibold ${
-                            (v.pending_amount || 0) === 0 
-                              ? 'text-green-600' 
-                              : (v.pending_amount || 0) === (v.total_collected || 0)
-                                ? 'text-red-600'
-                                : 'text-yellow-600'
-                          }`}>
-                            ${(v.pending_amount || 0).toFixed(2)}
+                          
+                          <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                            <div className="bg-emerald-50 p-3 rounded-lg">
+                              <div className="text-emerald-800 font-medium">Cleared</div>
+                              <div className="text-emerald-600 font-semibold">${(v.cleared_amount || 0).toFixed(2)}</div>
+                              {v.user_role === 'volunteer' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onUpdateClearedAmount(v);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                                >
+                                  Update
+                                </button>
+                              )}
+                            </div>
+                            <div className={`p-3 rounded-lg ${
+                              (v.pending_amount || 0) === 0 
+                                ? 'bg-green-50' 
+                                : (v.pending_amount || 0) === (v.total_collected || 0)
+                                  ? 'bg-red-50'
+                                  : 'bg-yellow-50'
+                            }`}>
+                              <div className={`font-medium ${
+                                (v.pending_amount || 0) === 0 
+                                  ? 'text-green-800' 
+                                  : (v.pending_amount || 0) === (v.total_collected || 0)
+                                    ? 'text-red-800'
+                                    : 'text-yellow-800'
+                              }`}>
+                                Pending
+                              </div>
+                              <div className={`font-semibold ${
+                                (v.pending_amount || 0) === 0 
+                                  ? 'text-green-600' 
+                                  : (v.pending_amount || 0) === (v.total_collected || 0)
+                                    ? 'text-red-600'
+                                    : 'text-yellow-600'
+                              }`}>
+                                ${(v.pending_amount || 0).toFixed(2)}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -672,7 +689,9 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sold By</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Tickets" column="total_tickets_per_person"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Registrations" column="total_registrations"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Summary</th>
+                    {showFinancialData && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Summary</th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food Summary</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check-in Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Last Registered" column="registered_at"/></th>
@@ -717,29 +736,31 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {attendee.total_registrations || 1}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="space-y-1">
-                            {attendee.cash_registrations && attendee.cash_registrations > 0 && (
-                              <div className="text-green-600">
-                                Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
-                              </div>
-                            )}
-                            {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
-                              <div className="text-blue-600">
-                                Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
-                              </div>
-                            )}
-                            {!attendee.cash_registrations && !attendee.zelle_registrations && (
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                attendee.payment_mode === 'cash'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {attendee.payment_mode.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+                        {showFinancialData && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="space-y-1">
+                              {attendee.cash_registrations && attendee.cash_registrations > 0 && (
+                                <div className="text-green-600">
+                                  Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
+                                </div>
+                              )}
+                              {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
+                                <div className="text-blue-600">
+                                  Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
+                                </div>
+                              )}
+                              {!attendee.cash_registrations && !attendee.zelle_registrations && (
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  attendee.payment_mode === 'cash'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {attendee.payment_mode.toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <div className="space-y-1">
                             {attendee.with_food_registrations && attendee.with_food_registrations > 0 && (
@@ -841,30 +862,32 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                             )}
                           </span>
                         </div>
-                        <div>
-                          <span className="text-gray-500">Payment Summary:</span>
-                          <div className="ml-2 text-gray-900">
-                            {attendee.cash_registrations && attendee.cash_registrations > 0 && (
-                              <div className="text-green-600">
-                                Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
-                              </div>
-                            )}
-                            {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
-                              <div className="text-blue-600">
-                                Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
-                              </div>
-                            )}
-                            {!attendee.cash_registrations && !attendee.zelle_registrations && (
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                attendee.payment_mode === 'cash'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}>
-                                {attendee.payment_mode.toUpperCase()}
-                              </span>
-                            )}
+                        {showFinancialData && (
+                          <div>
+                            <span className="text-gray-500">Payment Summary:</span>
+                            <div className="ml-2 text-gray-900">
+                              {attendee.cash_registrations && attendee.cash_registrations > 0 && (
+                                <div className="text-green-600">
+                                  Cash: {attendee.cash_registrations} (${attendee.total_cash_amount?.toFixed(2) || '0.00'})
+                                </div>
+                              )}
+                              {attendee.zelle_registrations && attendee.zelle_registrations > 0 && (
+                                <div className="text-blue-600">
+                                  Zelle: {attendee.zelle_registrations} (${attendee.total_zelle_amount?.toFixed(2) || '0.00'})
+                                </div>
+                              )}
+                              {!attendee.cash_registrations && !attendee.zelle_registrations && (
+                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                  attendee.payment_mode === 'cash'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {attendee.payment_mode.toUpperCase()}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div>
                           <span className="text-gray-500">Food Summary:</span>
                           <div className="ml-2 text-gray-900">

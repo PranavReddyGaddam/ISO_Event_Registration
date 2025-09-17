@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { AttendeeResponse, EventStats, AttendeeFilter, AttendeeFilterParams, ApiStatus, PaginationMeta, PaginatedResponse } from '../types';
 import { useApiClient } from '../hooks/useApiClient';
+import { useAuth } from '../contexts/AuthContext';
 import PricingManager from '../components/PricingManager';
 import VolunteerApplicationsManager from '../components/VolunteerApplicationsManager';
 import EventManager from '../components/EventManager';
@@ -12,6 +13,7 @@ import TabbedTables from '../components/TabbedTables';
 import UpdateClearedAmountModal from '../components/UpdateClearedAmountModal';
 
 const Dashboard: React.FC = () => {
+  const { isPresident, isFinanceDirector } = useAuth();
   const [stats, setStats] = useState<EventStats | null>(null);
   const [attendees, setAttendees] = useState<AttendeeResponse[]>([]);
   const [filter, setFilter] = useState<AttendeeFilter>({
@@ -272,8 +274,8 @@ const Dashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Stats Cards */}
-        {stats && <StatsCards stats={stats} />}
+        {/* Stats Cards - Role-based rendering */}
+        {stats && (isPresident() || isFinanceDirector()) && <FinancialStatsCards stats={stats} />}
 
         {/* Admin Actions */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 mb-4 sm:mb-6 p-4 sm:p-6">
@@ -346,11 +348,8 @@ const Dashboard: React.FC = () => {
           onEmailClick={handleEmailClick}
           onEmailAttendeesPageChange={handleEmailAttendeesPageChange}
           onBackToAttendees={handleBackToAttendees}
-          filter={{
-            ...filter,
-            offset: filter.offset || 0
-          }}
-          searchQuery={filter.search || ''}
+          filter={{ checked_in: filter.checked_in, food_option: filter.food_option, offset: filter.offset }}
+          searchQuery={filter.search ?? ''}
           onFilterChange={handleFilterChange}
           onSearchChange={handleSearch}
           onRefresh={loadData}
@@ -377,7 +376,8 @@ interface StatsCardsProps {
   stats: EventStats;
 }
 
-const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => (
+// Financial Stats Cards (President + Finance Director)
+const FinancialStatsCards: React.FC<StatsCardsProps> = ({ stats }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
       <div className="flex items-center">
@@ -445,6 +445,7 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => (
     </div>
   </div>
 );
+
 
 
 // Loading State Component

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Navigation: React.FC = () => {
-  const { isAuthenticated, getCurrentUser, logout, isPresident } = useAuth();
+  const { isAuthenticated, getCurrentUser, logout, isPresident, isFinanceDirector } = useAuth();
   const location = useLocation();
   const currentUser = getCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -50,7 +50,7 @@ export const Navigation: React.FC = () => {
                   </Link>
                 )}
                 
-                {isPresident() && (
+                {(isPresident() || isFinanceDirector()) && (
                   <Link 
                     to="/dashboard" 
                     className={`nav-item ${isActivePath('/dashboard') ? 'nav-item-active' : 'nav-item-inactive'}`}
@@ -152,7 +152,7 @@ export const Navigation: React.FC = () => {
                     </Link>
                   )}
 
-                  {isPresident() && (
+                  {(isPresident() || isFinanceDirector()) && (
                     <Link
                       to="/dashboard"
                       onClick={closeMobileMenu}

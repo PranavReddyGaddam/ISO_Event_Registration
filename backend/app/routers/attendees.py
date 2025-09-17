@@ -19,7 +19,12 @@ from app.models.attendee import (
 from app.utils.supabase_client import supabase_client
 from app.utils.qr_generator import qr_generator
 from app.utils.email_provider import get_email_sender
-from app.utils.auth import get_current_president, get_current_volunteer_or_president
+from app.utils.auth import (
+    get_current_president, 
+    get_current_volunteer_or_president,
+    get_current_president_or_finance_director,
+    get_current_dashboard_user
+)
 from app.models.auth import TokenData
 
 router = APIRouter(prefix="/api", tags=["attendees"])
@@ -113,9 +118,15 @@ async def get_attendees_by_email(
             detail="Failed to retrieve attendee registrations"
         )
 
+def filter_volunteer_summary_by_role(volunteers: list, user_role: str) -> list:
+    """Filter volunteer summary data based on user role."""
+    # President and Finance Director see all data
+    return volunteers
+
+
 # Volunteers aggregation endpoint
 @router.get("/volunteers/summary")
-async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president)):
+async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president_or_finance_director)):
     """Get all volunteers with their registration statistics."""
     try:
         # First, get all volunteer users (role = 'volunteer') and president
@@ -177,7 +188,9 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 **stats
             })
         
-        return result
+        # Apply role-based filtering
+        filtered_result = filter_volunteer_summary_by_role(result, current_user.role)
+        return filtered_result
     except Exception as e:
         logger.error(f"Error getting volunteer summary: {e}")
         raise HTTPException(status_code=500, detail="Failed to get volunteer summary")
@@ -480,7 +493,7 @@ async def get_attendees(
     food_option: str = None,
     limit: int = 50,
     offset: int = 0,
-    current_user: TokenData = Depends(get_current_president)
+    current_user: TokenData = Depends(get_current_dashboard_user)
 ):
     """Get list of attendees with optional filters and pagination."""
     try:
@@ -523,26 +536,35 @@ async def get_attendees(
 
 
 
+def filter_stats_by_role(stats: dict, user_role: str) -> dict:
+    """Filter event stats based on user role."""
+    # President and Finance Director see all data
+    return stats
+
+
 @router.get("/stats", response_model=EventStats)
-async def get_event_stats(current_user: TokenData = Depends(get_current_president)):
+async def get_event_stats(current_user: TokenData = Depends(get_current_dashboard_user)):
     """Get event statistics."""
     try:
         stats = await supabase_client.get_event_stats()
         
+        # Filter stats based on user role
+        filtered_stats = filter_stats_by_role(stats, current_user.role)
+        
         # Convert recent check-ins to AttendeeResponse objects
         recent_checkins = [
             AttendeeResponse(**attendee) 
-            for attendee in stats["recent_checkins"]
+            for attendee in filtered_stats["recent_checkins"]
         ]
         
         return EventStats(
-            total_registered=stats["total_registered"],
-            total_checked_in=stats["total_checked_in"],
-            checked_in_percentage=stats["checked_in_percentage"],
-            total_tickets_sold=stats.get("total_tickets_sold", 0),
-            total_revenue=stats.get("total_revenue", 0.0),
-            revenue_cash=stats.get("revenue_cash", 0.0),
-            revenue_zelle=stats.get("revenue_zelle", 0.0),
+            total_registered=filtered_stats["total_registered"],
+            total_checked_in=filtered_stats["total_checked_in"],
+            checked_in_percentage=filtered_stats["checked_in_percentage"],
+            total_tickets_sold=filtered_stats["total_tickets_sold"],
+            total_revenue=filtered_stats["total_revenue"],
+            revenue_cash=filtered_stats["revenue_cash"],
+            revenue_zelle=filtered_stats["revenue_zelle"],
             recent_checkins=recent_checkins
         )
         

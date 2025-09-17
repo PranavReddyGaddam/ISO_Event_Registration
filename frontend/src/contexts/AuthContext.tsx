@@ -9,6 +9,7 @@ interface AuthContextType {
   getCurrentUser: () => UserResponse | null;
   isPresident: () => boolean;
   isVolunteer: () => boolean;
+  isFinanceDirector: () => boolean;
   hasAccess: (allowedRoles: string[]) => boolean;
   getAuthHeaders: () => Record<string, string>;
 }
@@ -118,6 +119,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return authState.user?.role === UserRole.VOLUNTEER;
   };
 
+  const isFinanceDirector = (): boolean => {
+    return authState.user?.role === UserRole.FINANCE_DIRECTOR;
+  };
+
+
   const hasAccess = (allowedRoles: string[]): boolean => {
     const user = authState.user;
     if (!user) return false;
@@ -144,6 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     getCurrentUser,
     isPresident,
     isVolunteer,
+    isFinanceDirector,
     hasAccess,
     getAuthHeaders
   };

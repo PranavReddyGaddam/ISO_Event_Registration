@@ -4,7 +4,8 @@
 
 export enum UserRole {
   PRESIDENT = 'president',
-  VOLUNTEER = 'volunteer'
+  VOLUNTEER = 'volunteer',
+  FINANCE_DIRECTOR = 'finance_director'
 }
 
 export interface UserLogin {

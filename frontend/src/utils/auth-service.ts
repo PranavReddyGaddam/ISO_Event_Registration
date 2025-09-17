@@ -152,6 +152,14 @@ class AuthService {
   }
 
   /**
+   * Check if current user is finance director
+   */
+  isFinanceDirector(): boolean {
+    return this.authState.user?.role === UserRole.FINANCE_DIRECTOR;
+  }
+
+
+  /**
    * Get authorization headers for API calls
    */
   getAuthHeaders(): Record<string, string> {
@@ -173,14 +181,17 @@ class AuthService {
     const user = this.authState.user;
     if (!user) return false;
 
-    // Dashboard access is president only
+    // Dashboard access for president and finance director
     if (route === '/dashboard' || route === '/admin') {
-      return user.role === UserRole.PRESIDENT;
+      return user.role === UserRole.PRESIDENT || 
+             user.role === UserRole.FINANCE_DIRECTOR;
     }
 
-    // Check-in access for both roles
+    // Check-in access for all roles
     if (route === '/checkin') {
-      return user.role === UserRole.PRESIDENT || user.role === UserRole.VOLUNTEER;
+      return user.role === UserRole.PRESIDENT || 
+             user.role === UserRole.VOLUNTEER || 
+             user.role === UserRole.FINANCE_DIRECTOR;
     }
 
     // Default: allow access
