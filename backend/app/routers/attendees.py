@@ -129,8 +129,14 @@ def filter_volunteer_summary_by_role(volunteers: list, user_role: str) -> list:
 async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president_or_finance_director)):
     """Get all volunteers with their registration statistics."""
     try:
-        # First, get all volunteer users (role = 'volunteer') and president
-        volunteers_resp = supabase_client.service_client.table("users").select("id, full_name, email, team_role, role, cleared_amount").in_("role", ["volunteer", "president"]).execute()
+        # First, get all sales team users (volunteers, president, finance director)
+        volunteers_resp = (
+            supabase_client.service_client
+            .table("users")
+            .select("id, full_name, email, team_role, role, cleared_amount")
+            .in_("role", ["volunteer", "president", "finance_director"])
+            .execute()
+        )
         volunteers = volunteers_resp.data or []
         
         # Then get attendees data for statistics
@@ -180,7 +186,11 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 "volunteer_id": vid,
                 "full_name": volunteer.get("full_name"),
                 "email": volunteer.get("email"),
-                "team_role": volunteer.get("team_role") if volunteer.get("role") == "volunteer" else "President",
+                "team_role": (
+                    volunteer.get("team_role")
+                    if volunteer.get("role") == "volunteer"
+                    else ("President" if volunteer.get("role") == "president" else "Finance Director")
+                ),
                 "user_role": volunteer.get("role"),
                 "cleared_amount": cleared_amount,
                 "total_collected": total_collected,

@@ -442,6 +442,11 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                                 President
                               </span>
                             )}
+                            {v.user_role === 'finance_director' && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                Finance Director
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
@@ -510,6 +515,11 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                             {v.user_role === 'president' && (
                               <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 President
+                              </span>
+                            )}
+                            {v.user_role === 'finance_director' && (
+                              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                Finance Director
                               </span>
                             )}
                           </div>
