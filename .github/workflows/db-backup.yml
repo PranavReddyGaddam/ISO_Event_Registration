@@ -1,0 +1,48 @@
+name: Daily DB Backup to S3
+
+on:
+  schedule:
+    - cron: "0 7 * * *"   # daily at 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  S3_PREFIX: ${{ secrets.S3_PREFIX }}
+  TZ: UTC
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::226809941643:role/GitHubActionsS3BackupRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Create dump filename
+        id: vars
+        run: echo "DUMP=db_$(date -u +'%Y-%m-%dT%H-%M-%SZ').sql.gz" >> $GITHUB_OUTPUT
+
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "${{ steps.vars.outputs.DUMP }}"
+          sha256sum "${{ steps.vars.outputs.DUMP }}" > "${{ steps.vars.outputs.DUMP }}.sha256"
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp "${{ steps.vars.outputs.DUMP }}" s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}/${{ steps.vars.outputs.DUMP }} --storage-class STANDARD_IA
+          aws s3 cp "${{ steps.vars.outputs.DUMP }}.sha256" s3://${{ env.S3_BUCKET }}/${{ env.S3_PREFIX }}/${{ steps.vars.outputs.DUMP }}.sha256 --storage-class STANDARD_IA
+
+
