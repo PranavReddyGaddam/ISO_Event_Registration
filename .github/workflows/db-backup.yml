@@ -25,8 +25,14 @@ jobs:
           role-to-assume: arn:aws:iam::226809941643:role/GitHubActionsS3BackupRole
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Postgres client 17
+      - name: Install Postgres client 17 (PGDG)
         run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y wget ca-certificates gnupg
+          sudo install -d /usr/share/keyrings
+          wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
 
