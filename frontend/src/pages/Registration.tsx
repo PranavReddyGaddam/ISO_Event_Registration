@@ -7,6 +7,9 @@ import { AttendeeCreate, AttendeeResponse, FormErrors, ApiStatus, TicketCalculat
 import { attendeeRegistrationValidator, formatPhoneNumber } from '../utils/validation';
 import { useApiClient } from '../hooks/useApiClient';
 import { useAuth } from '../contexts/AuthContext';
+import EmailInput from '../components/EmailInput';
+import VolunteerLeaderboard from '../components/VolunteerLeaderboard';
+import VolunteerRankDisplay from '../components/VolunteerRankDisplay';
 
 const Registration: React.FC = () => {
   const [formData, setFormData] = useState<AttendeeCreate>({
@@ -22,6 +25,8 @@ const Registration: React.FC = () => {
   const [successData, setSuccessData] = useState<AttendeeResponse | null>(null);
   const [selectedPricing, setSelectedPricing] = useState<TicketCalculationResponse | null>(null);
   const [, setLoadingPricing] = useState(false);
+  const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
 
   const apiClient = useApiClient();
   const { isPresident, isAuthenticated } = useAuth();
@@ -100,6 +105,9 @@ const Registration: React.FC = () => {
       setSuccessData(response);
       setStatus(ApiStatus.SUCCESS);
       
+      // Refresh leaderboard
+      setLeaderboardRefresh(prev => prev + 1);
+      
       // Reset form
       setFormData({ name: '', email: '', phone: '', ticket_quantity: 1, payment_mode: 'cash', food_option: 'with_food' });
       setSelectedPricing(null);
@@ -137,6 +145,20 @@ const Registration: React.FC = () => {
   return (
     <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
       <div className="w-full max-w-sm mx-auto sm:max-w-md">
+        {/* Compact Rank Display - Always visible for authenticated users */}
+        {isAuthenticated() && (
+          <VolunteerRankDisplay 
+            refreshTrigger={leaderboardRefresh}
+            onToggleLeaderboard={setShowFullLeaderboard}
+            showFullLeaderboard={showFullLeaderboard}
+          />
+        )}
+        
+        {/* Full Leaderboard - Only shown when toggled on */}
+        {isAuthenticated() && showFullLeaderboard && (
+          <VolunteerLeaderboard refreshTrigger={leaderboardRefresh} />
+        )}
+        
         <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-4 sm:p-6 text-black">
           <div className="text-center mb-4 sm:mb-6">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Event Registration</h1>
@@ -215,16 +237,14 @@ const Registration: React.FC = () => {
               <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-1">
                 Email Address *
               </label>
-              <input
-                type="email"
+              <EmailInput
                 id="email"
                 value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`w-full px-3 py-2 sm:py-3 bg-white/10 backdrop-blur-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-gray-900 placeholder-gray-500 text-sm sm:text-base ${
-                  errors.email ? 'border-red-400/50' : 'border-white/30'
-                }`}
+                onChange={(value) => handleInputChange('email', value)}
                 placeholder="Enter your email address"
                 disabled={status === ApiStatus.LOADING}
+                required
+                showSuggestion={true}
               />
               {errors.email && <p className="mt-1 text-sm text-red-300">{errors.email}</p>}
             </div>

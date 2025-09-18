@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, ClassVar, List
 from datetime import datetime
 from enum import Enum
+from app.utils.email_validation import enhanced_email_validator
 
 
 class ApplicationStatus(str, Enum):
@@ -28,6 +29,11 @@ class VolunteerApplicationBase(BaseModel):
         "Vice President",
         "President",
     ]
+    
+    @validator('email')
+    def validate_email(cls, v):
+        """Enhanced email validation with typo detection."""
+        return enhanced_email_validator(cls, v)
     
     @validator('phone')
     def validate_phone(cls, v):

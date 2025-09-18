@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useApiClient } from '../hooks/useApiClient';
 import { VolunteerApplicationCreate, TEAM_ROLES } from '../types/volunteerApplication';
 import { ApiStatus } from '../types/api';
+import EmailInput from './EmailInput';
+import { validateEmailWithTypoDetection } from '../utils/validation';
 
 interface VolunteerSignupFormProps {
   onSuccess?: () => void;
@@ -45,8 +47,11 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+    } else {
+      const emailValidation = validateEmailWithTypoDetection(formData.email);
+      if (!emailValidation.isValid) {
+        newErrors.email = emailValidation.error || 'Please enter a valid email address';
+      }
     }
 
     if (!formData.phone.trim()) {
@@ -169,16 +174,17 @@ const VolunteerSignupForm: React.FC<VolunteerSignupFormProps> = ({ onSuccess, on
           <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
             Email Address *
           </label>
-          <input
-            type="email"
+          <EmailInput
             id="email"
             value={formData.email}
-            onChange={(e) => handleInputChange('email', e.target.value)}
+            onChange={(value) => handleInputChange('email', value)}
+            placeholder="Enter your email address"
+            disabled={status === ApiStatus.LOADING}
+            required
+            showSuggestion={true}
             className={`w-full px-3 py-2 bg-white/10 border rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.email ? 'border-red-500' : 'border-gray-600'
             }`}
-            placeholder="Enter your email address"
-            disabled={status === ApiStatus.LOADING}
           />
           {errors.email && (
             <p className="mt-1 text-sm text-red-400">{errors.email}</p>

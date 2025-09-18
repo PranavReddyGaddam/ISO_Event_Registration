@@ -552,6 +552,130 @@ def filter_stats_by_role(stats: dict, user_role: str) -> dict:
     return stats
 
 
+@router.get("/volunteers/leaderboard")
+async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_current_volunteer_or_president)):
+    """Get volunteer leaderboard with top 3 performers and current user's rank."""
+    try:
+        # Get all volunteers (exclude leadership roles)
+        volunteers_resp = (
+            supabase_client.service_client
+            .table("users")
+            .select("id, full_name, team_role")
+            .eq("role", "volunteer")
+            .not_.is_("team_role", "null")
+            .not_.in_("team_role", ["Director", "Secretary", "Vice President", "President"])
+            .execute()
+        )
+        volunteers = volunteers_resp.data or []
+        
+        # Also get current user info to ensure they're included
+        current_user_resp = (
+            supabase_client.service_client
+            .table("users")
+            .select("id, full_name, team_role, role")
+            .eq("id", current_user.user_id)
+            .execute()
+        )
+        current_user_data = current_user_resp.data[0] if current_user_resp.data else None
+        
+        # Debug current user data
+        logger.info(f"Current user data from DB: {current_user_data}")
+        
+        # Add current user to volunteers list if they're not already there and are eligible
+        if current_user_data and current_user_data not in volunteers:
+            # Check if current user is eligible (not a leadership role)
+            if (current_user_data.get("team_role") and 
+                current_user_data.get("team_role") not in ["Director", "Secretary", "Vice President", "President"]):
+                volunteers.append(current_user_data)
+                logger.info(f"Added current user to volunteers list: {current_user_data['full_name']}")
+            else:
+                logger.info(f"Current user not eligible for leaderboard - Role: {current_user_data.get('role')}, Team Role: {current_user_data.get('team_role')}")
+        
+        # If current user is still not in the list, add them anyway for display purposes
+        if current_user_data and not any(v["id"] == current_user.user_id for v in volunteers):
+            logger.info("Adding current user to leaderboard for display purposes")
+            volunteers.append(current_user_data)
+        
+        if not volunteers:
+            return {
+                "top_volunteers": [],
+                "current_user_rank": None,
+                "total_volunteers": 0
+            }
+        
+        # Get ticket counts for each volunteer
+        volunteer_ids = [v["id"] for v in volunteers]
+        attendees_resp = supabase_client.client.table("attendees").select("created_by, ticket_quantity").in_("created_by", volunteer_ids).execute()
+        attendees_data = attendees_resp.data or []
+        
+        # Count tickets per volunteer
+        volunteer_tickets = {}
+        for attendee in attendees_data:
+            vid = attendee.get("created_by")
+            if vid:
+                volunteer_tickets[vid] = volunteer_tickets.get(vid, 0) + attendee.get("ticket_quantity", 1)
+        
+        # Create leaderboard data
+        leaderboard_data = []
+        for volunteer in volunteers:
+            vid = volunteer["id"]
+            tickets_sold = volunteer_tickets.get(vid, 0)
+            leaderboard_data.append({
+                "volunteer_id": vid,
+                "full_name": volunteer.get("full_name"),
+                "team_role": volunteer.get("team_role"),
+                "tickets_sold": tickets_sold,
+                "is_current_user": vid == current_user.user_id
+            })
+        
+        # Sort by tickets sold (descending)
+        leaderboard_data.sort(key=lambda x: x["tickets_sold"], reverse=True)
+        
+        # Assign ranks (handle ties)
+        current_rank = 1
+        for i, volunteer in enumerate(leaderboard_data):
+            if i > 0 and volunteer["tickets_sold"] != leaderboard_data[i-1]["tickets_sold"]:
+                current_rank = i + 1
+            volunteer["rank"] = current_rank
+        
+        # Get top 3
+        top_volunteers = leaderboard_data[:3]
+        
+        # Find current user's rank
+        current_user_rank = None
+        for volunteer in leaderboard_data:
+            if volunteer["is_current_user"]:
+                current_user_rank = volunteer
+                break
+        
+        # Debug logging
+        logger.info(f"Current user ID: {current_user.user_id}")
+        logger.info(f"Current user role: {current_user.role}")
+        logger.info(f"Total volunteers in leaderboard: {len(leaderboard_data)}")
+        logger.info(f"Current user found: {current_user_rank is not None}")
+        
+        # Additional debugging
+        if current_user_rank is None:
+            logger.info("Current user not found in leaderboard. Checking all volunteers...")
+            for volunteer in leaderboard_data:
+                logger.info(f"  Volunteer ID: {volunteer['volunteer_id']}, Name: {volunteer['full_name']}, Is Current User: {volunteer['is_current_user']}")
+        else:
+            logger.info(f"Current user rank: {current_user_rank['rank']}, Tickets: {current_user_rank['tickets_sold']}")
+        
+        return {
+            "top_volunteers": top_volunteers,
+            "current_user_rank": current_user_rank,
+            "total_volunteers": len(leaderboard_data)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting volunteer leaderboard: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve volunteer leaderboard"
+        )
+
+
 @router.get("/stats", response_model=EventStats)
 async def get_event_stats(current_user: TokenData = Depends(get_current_dashboard_user)):
     """Get event statistics."""

@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Optional, Literal, List, Generic, TypeVar
 from pydantic import BaseModel, EmailStr, validator, Field
 import uuid
+from app.utils.email_validation import enhanced_email_validator
 
 T = TypeVar('T')
 
@@ -27,6 +28,11 @@ class AttendeeBase(BaseModel):
         if not v.strip():
             raise ValueError("Name cannot be empty")
         return v.strip()
+    
+    @validator("email")
+    def validate_email(cls, v: str) -> str:
+        """Enhanced email validation with typo detection."""
+        return enhanced_email_validator(cls, v)
     
     @validator("phone")
     def validate_phone(cls, v: str) -> str:
