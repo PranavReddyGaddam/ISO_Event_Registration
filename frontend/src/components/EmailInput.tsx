@@ -23,7 +23,6 @@ const EmailInput: React.FC<EmailInputProps> = ({
   onChange,
   onBlur,
   placeholder = "Enter your email address",
-  className = "",
   disabled = false,
   id,
   name,
@@ -39,7 +38,7 @@ const EmailInput: React.FC<EmailInputProps> = ({
     if (value.trim()) {
       const result = validateEmailWithTypoDetection(value);
       setValidationResult(result);
-      setShowSuggestionBox(!result.isValid && result.suggestion && showSuggestion);
+      setShowSuggestionBox(!result.isValid && !!result.suggestion && showSuggestion);
     } else {
       setValidationResult(null);
       setShowSuggestionBox(false);
