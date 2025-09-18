@@ -328,71 +328,123 @@ async def register_attendee(
                 detail=f"Failed to calculate ticket price: {str(e)}"
             )
         
-        # Create multiple attendee records (one per ticket)
-        created_attendees = []
+        # Prepare all QR codes and data first (before any database operations)
         qr_codes_data = []  # Store QR code data for PDF generation
+        attendee_records = []  # Store all attendee data before database insertion
         
+        logger.info(f"Preparing {attendee.ticket_quantity} tickets for {attendee.name}")
+        
+        # Step 1: Generate all QR codes and prepare all data
         for ticket_num in range(1, attendee.ticket_quantity + 1):
-            # Generate unique QR code for each ticket
-            qr_code_id = qr_generator.generate_qr_code_id()
-            qr_code_id, qr_code_bytes = qr_generator.create_qr_code(
-                qr_code_id, attendee.name
-            )
-            
-            # Upload QR code to Supabase storage
-            qr_code_url = await supabase_client.upload_qr_code(qr_code_id, qr_code_bytes)
-            
-            if not qr_code_url:
+            try:
+                # Generate unique QR code for each ticket
+                qr_code_id = qr_generator.generate_qr_code_id()
+                qr_code_id, qr_code_bytes = qr_generator.create_qr_code(
+                    qr_code_id, attendee.name
+                )
+                
+                # Upload QR code to Supabase storage
+                qr_code_url = await supabase_client.upload_qr_code(qr_code_id, qr_code_bytes)
+                
+                if not qr_code_url:
+                    raise Exception(f"Failed to upload QR code for ticket {ticket_num}")
+                
+                # Calculate price per ticket
+                price_per_ticket = total_price / attendee.ticket_quantity
+                
+                # Prepare attendee record for this ticket
+                attendee_data = {
+                    "name": attendee.name,
+                    "email": attendee.email,
+                    "phone": attendee.phone,
+                    "payment_mode": attendee.payment_mode,
+                    "food_option": attendee.food_option,
+                    "ticket_quantity": 1,  # Each record represents 1 ticket
+                    "total_price": price_per_ticket,
+                    "event_id": event_id,
+                    "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
+                    "qr_code_id": qr_code_id,
+                    "qr_code_url": qr_code_url,
+                    "created_at": datetime.utcnow().isoformat(),
+                    "is_checked_in": False
+                }
+                
+                attendee_records.append(attendee_data)
+                
+                # Store QR code data for PDF generation
+                qr_codes_data.append({
+                    "qr_code_id": qr_code_id,
+                    "qr_code_url": qr_code_url,
+                    "ticket_number": ticket_num,
+                    "total_tickets": attendee.ticket_quantity,
+                    "attendee_name": attendee.name,
+                    "attendee_email": attendee.email,
+                    "attendee_phone": attendee.phone,
+                    "price_per_ticket": price_per_ticket
+                })
+                
+                logger.info(f"Successfully prepared ticket {ticket_num}/{attendee.ticket_quantity}")
+                
+            except Exception as e:
+                logger.error(f"Failed to prepare ticket {ticket_num}: {e}")
+                # Clean up any QR codes that were uploaded but registration failed
+                for cleanup_data in qr_codes_data:
+                    try:
+                        await supabase_client.delete_qr_code(cleanup_data["qr_code_id"])
+                        logger.info(f"Cleaned up QR code: {cleanup_data['qr_code_id']}")
+                    except Exception as cleanup_error:
+                        logger.error(f"Failed to cleanup QR code {cleanup_data['qr_code_id']}: {cleanup_error}")
+                
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Failed to upload QR code for ticket {ticket_num}"
+                    detail=f"Failed to prepare ticket {ticket_num} of {attendee.ticket_quantity}. Please try again."
                 )
-            
-            # Calculate price per ticket
-            price_per_ticket = total_price / attendee.ticket_quantity
-            
-            # Create attendee record for this ticket
-            attendee_data = {
-                "name": attendee.name,
-                "email": attendee.email,
-                "phone": attendee.phone,
-                "payment_mode": attendee.payment_mode,
-                "food_option": attendee.food_option,
-                "ticket_quantity": 1,  # Each record represents 1 ticket
-                "total_price": price_per_ticket,
-                "event_id": event_id,
-                "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
-                "qr_code_id": qr_code_id,
-                "qr_code_url": qr_code_url,
-                "created_at": datetime.utcnow().isoformat(),
-                "is_checked_in": False
-            }
-            
-            created_attendee = await supabase_client.create_attendee(attendee_data)
-            created_attendees.append(created_attendee)
-            
-            # Store QR code data for PDF generation
-            qr_codes_data.append({
-                "qr_code_id": qr_code_id,
-                "qr_code_url": qr_code_url,
-                "ticket_number": ticket_num,
-                "total_tickets": attendee.ticket_quantity,
-                "attendee_name": attendee.name,
-                "attendee_email": attendee.email,
-                "attendee_phone": attendee.phone,
-                "price_per_ticket": price_per_ticket
-            })
         
-        # Send registration email with PDF attachment
+        # Step 2: Create all attendee records in database (all or nothing)
+        created_attendees = []
         try:
+            for i, attendee_data in enumerate(attendee_records):
+                created_attendee = await supabase_client.create_attendee(attendee_data)
+                created_attendees.append(created_attendee)
+                logger.info(f"Created attendee record {i+1}/{len(attendee_records)}")
+                
+        except Exception as e:
+            logger.error(f"Failed to create attendee records: {e}")
+            # Rollback: Delete all created attendees
+            for i, created_attendee in enumerate(created_attendees):
+                try:
+                    await supabase_client.delete_attendee(created_attendee["id"])
+                    logger.info(f"Rolled back attendee record {i+1}")
+                except Exception as rollback_error:
+                    logger.error(f"Failed to rollback attendee {created_attendee.get('id', 'unknown')}: {rollback_error}")
+            
+            # Clean up QR codes
+            for cleanup_data in qr_codes_data:
+                try:
+                    await supabase_client.delete_qr_code(cleanup_data["qr_code_id"])
+                    logger.info(f"Cleaned up QR code: {cleanup_data['qr_code_id']}")
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to cleanup QR code {cleanup_data['qr_code_id']}: {cleanup_error}")
+            
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create registration records. Please try again."
+            )
+        
+        # Step 3: Send registration email with PDF attachment (only if all tickets created successfully)
+        try:
+            logger.info(f"Sending registration email to {attendee.email} for {len(qr_codes_data)} tickets")
             await send_registration_email_with_pdf_task(
                 attendee.email,
                 attendee.name,
                 qr_codes_data,
                 total_price
             )
+            logger.info(f"Successfully sent registration email to {attendee.email}")
         except Exception as e:
-            logger.error(f"Email sending failed but registration succeeded: {e}")
+            logger.error(f"Email sending failed for {attendee.email}: {e}")
+            # Note: We don't rollback the registration if email fails
+            # The tickets are valid even if email delivery fails
         
         # Return a summary record with total registration information
         first_attendee = created_attendees[0]

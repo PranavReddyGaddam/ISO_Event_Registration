@@ -435,6 +435,27 @@ class SupabaseClient:
             logger.error(f"Error uploading QR code: {e}")
             return None
     
+    async def delete_qr_code(self, qr_code_id: str) -> bool:
+        """Delete a QR code from storage."""
+        try:
+            file_path = f"{qr_code_id}.png"
+            result = self.service_client.storage.from_("qr-codes").remove([file_path])
+            logger.info(f"Deleted QR code: {qr_code_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting QR code {qr_code_id}: {e}")
+            return False
+    
+    async def delete_attendee(self, attendee_id: str) -> bool:
+        """Delete an attendee record from the database."""
+        try:
+            response = self.service_client.table("attendees").delete().eq("id", attendee_id).execute()
+            logger.info(f"Deleted attendee: {attendee_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting attendee {attendee_id}: {e}")
+            return False
+    
     # User management methods
     async def create_user(self, user_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Create a new user in the database."""

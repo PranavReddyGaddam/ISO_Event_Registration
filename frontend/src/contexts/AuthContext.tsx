@@ -3,6 +3,7 @@ import { UserLogin, LoginResponse, UserResponse, AuthState, UserRole } from '../
 
 interface AuthContextType {
   authState: AuthState;
+  isLoading: boolean;
   login: (credentials: UserLogin) => Promise<LoginResponse>;
   logout: () => void;
   isAuthenticated: () => boolean;
@@ -25,6 +26,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user: null,
     token: null
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load auth state from localStorage on mount
   useEffect(() => {
@@ -47,6 +49,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.error('Failed to load auth from storage:', error);
       clearAuth();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,6 +148,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value: AuthContextType = {
     authState,
+    isLoading,
     login,
     logout,
     isAuthenticated,

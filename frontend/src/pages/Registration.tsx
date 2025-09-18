@@ -29,7 +29,7 @@ const Registration: React.FC = () => {
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
 
   const apiClient = useApiClient();
-  const { isPresident, isAuthenticated } = useAuth();
+  const { isPresident, isAuthenticated, isLoading } = useAuth();
 
 
   const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food') => {
@@ -140,6 +140,22 @@ const Registration: React.FC = () => {
       setStatus(ApiStatus.IDLE);
       setSuccessData(null);
     }} />;
+  }
+
+  // Show loading state while authentication is being determined
+  if (isLoading) {
+    return (
+      <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-sm mx-auto sm:max-w-md">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-8 text-center">
+            <div className="flex items-center justify-center h-32">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+            </div>
+            <p className="mt-4 text-gray-600">Loading registration form...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
