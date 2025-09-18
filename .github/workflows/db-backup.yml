@@ -25,19 +25,42 @@ jobs:
           role-to-assume: arn:aws:iam::226809941643:role/GitHubActionsS3BackupRole
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Postgres client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Install Postgres client 17
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
 
       - name: Create dump filename
         id: vars
         run: echo "DUMP=db_$(date -u +'%Y-%m-%dT%H-%M-%SZ').sql.gz" >> $GITHUB_OUTPUT
 
-      - name: Run pg_dump
+      - name: Resolve IPv4 and augment DB URL
+        id: dburl
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           set -euo pipefail
-          pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "${{ steps.vars.outputs.DUMP }}"
+          # Extract hostname from URI
+          HOST=$(printf '%s' "$DATABASE_URL" | sed -E 's#.*://[^@]*@([^:/?]+).*#\1#')
+          IP4=$(getent ahostsv4 "$HOST" | awk '{print $1; exit}')
+          if [ -n "$IP4" ]; then
+            # Append hostaddr=IPv4 so libpq connects over IPv4 but still verifies hostname
+            if echo "$DATABASE_URL" | grep -q '?'; then
+              URL_V4="${DATABASE_URL}&hostaddr=${IP4}"
+            else
+              URL_V4="${DATABASE_URL}?hostaddr=${IP4}"
+            fi
+          else
+            URL_V4="$DATABASE_URL"
+          fi
+          echo "url=$URL_V4" >> $GITHUB_OUTPUT
+
+      - name: Run pg_dump (v17)
+        env:
+          DATABASE_URL: ${{ steps.dburl.outputs.url }}
+        run: |
+          set -euo pipefail
+          /usr/lib/postgresql/17/bin/pg_dump "$DATABASE_URL" --format=plain --no-owner --no-privileges | gzip -9 > "${{ steps.vars.outputs.DUMP }}"
           sha256sum "${{ steps.vars.outputs.DUMP }}" > "${{ steps.vars.outputs.DUMP }}.sha256"
 
       - name: Upload to S3
