@@ -75,7 +75,7 @@ def decode_access_token(token: str) -> TokenData:
         logger.error(f"JWT decode error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="Please log out and login again",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except ValueError as e:
