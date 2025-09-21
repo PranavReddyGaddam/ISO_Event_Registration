@@ -29,10 +29,10 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
 }) => {
   const [clearedAmount, setClearedAmount] = useState<string>('');
 
-  // Update the input when volunteer changes
+  // Reset input to empty when volunteer changes (incremental clearing)
   React.useEffect(() => {
     if (volunteer) {
-      setClearedAmount(volunteer.cleared_amount.toString());
+      setClearedAmount(''); // Start with empty input for incremental clearing
     }
   }, [volunteer]);
 
@@ -41,13 +41,15 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
     if (!volunteer) return;
 
     const amount = parseFloat(clearedAmount);
-    if (isNaN(amount) || amount < 0) {
-      alert('Please enter a valid amount');
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount greater than 0');
       return;
     }
 
-    if (amount > volunteer.total_collected) {
-      alert('Cleared amount cannot exceed total collected amount');
+    // Check if the new total (current + new amount) would exceed total collected
+    const newTotalCleared = volunteer.cleared_amount + amount;
+    if (newTotalCleared > volunteer.total_collected) {
+      alert(`Adding $${amount.toFixed(2)} would exceed the total collected amount of $${volunteer.total_collected.toFixed(2)}. Maximum additional amount: $${(volunteer.total_collected - volunteer.cleared_amount).toFixed(2)}`);
       return;
     }
 
@@ -132,7 +134,7 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
             {/* Update Input */}
             <div>
               <label htmlFor="clearedAmount" className="block text-sm font-medium text-gray-700 mb-2">
-                New Cleared Amount
+                Additional Amount to Clear
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -143,8 +145,8 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
                   id="clearedAmount"
                   value={clearedAmount}
                   onChange={(e) => setClearedAmount(e.target.value)}
-                  min="0"
-                  max={volunteer.total_collected}
+                  min="0.01"
+                  max={volunteer.total_collected - volunteer.cleared_amount}
                   step="0.01"
                   className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="0.00"
@@ -152,7 +154,7 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Maximum: ${volunteer.total_collected.toFixed(2)}
+                Maximum additional amount: ${(volunteer.total_collected - volunteer.cleared_amount).toFixed(2)}
               </p>
             </div>
 
@@ -161,8 +163,9 @@ const UpdateClearedAmountModal: React.FC<UpdateClearedAmountModalProps> = ({
               <div className="bg-blue-50 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-blue-900 mb-2">Preview</h4>
                 <div className="text-sm text-blue-800">
-                  <div>New Cleared: ${parseFloat(clearedAmount).toFixed(2)}</div>
-                  <div>New Pending: ${(volunteer.total_collected - parseFloat(clearedAmount)).toFixed(2)}</div>
+                  <div>Adding: ${parseFloat(clearedAmount).toFixed(2)}</div>
+                  <div>New Total Cleared: ${(volunteer.cleared_amount + parseFloat(clearedAmount)).toFixed(2)}</div>
+                  <div>New Pending: ${(volunteer.total_collected - volunteer.cleared_amount - parseFloat(clearedAmount)).toFixed(2)}</div>
                 </div>
               </div>
             )}

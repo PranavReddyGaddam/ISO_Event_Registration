@@ -8,3 +8,4 @@ export { ProtectedRoute } from './ProtectedRoute';
 export { default as TabbedTables } from './TabbedTables';
 export { default as VolunteerApplicationsManager } from './VolunteerApplicationsManager';
 export { default as VolunteerSignupForm } from './VolunteerSignupForm';
+export { default as ResendQrEmailModal } from './ResendQrEmailModal';

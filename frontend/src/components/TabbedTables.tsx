@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { AttendeeResponse, PaginationMeta } from '../types';
 import { downloadCSV } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import ResendQrEmailModal from './ResendQrEmailModal';
 
 interface TabbedTablesProps {
   // Role-based permissions
@@ -25,6 +26,7 @@ interface TabbedTablesProps {
   
   // Volunteer drill-down data
   selectedVolunteer: any | null;
+  volunteerDetails: any | null;
   volunteerAttendees: AttendeeResponse[];
   volunteerAttendeesPagination: PaginationMeta | null;
   onVolunteerClick: (volunteer: any) => void;
@@ -66,6 +68,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   onPageChange,
   onPageSizeChange,
   selectedVolunteer,
+  volunteerDetails,
   volunteerAttendees,
   volunteerAttendeesPagination,
   onVolunteerClick,
@@ -91,6 +94,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   const [volunteerSortDir, setVolunteerSortDir] = useState<'asc' | 'desc'>('desc');
   const [isDownloadingCSV, setIsDownloadingCSV] = useState(false);
   const [isDownloadingAttendeesCSV, setIsDownloadingAttendeesCSV] = useState(false);
+  const [showResendModal, setShowResendModal] = useState(false);
 
   const { getAuthHeaders } = useAuth();
 
@@ -208,10 +212,55 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
             </div>
             <div className="text-right">
               <div className="text-sm text-gray-600">Total Attendees</div>
-              <div className="text-2xl font-bold text-gray-900">{selectedVolunteer.total_attendees}</div>
+              <div className="text-2xl font-bold text-gray-900">{volunteerDetails?.total_attendees || selectedVolunteer.total_attendees}</div>
             </div>
           </div>
-        </div>
+          
+          {/* Financial Summary */}
+          {volunteerDetails && (
+            <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-white/20">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Total Sales</div>
+                  <div className="text-2xl font-bold text-green-600">${volunteerDetails.total_sales?.toFixed(2) || '0.00'}</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Cleared Amount</div>
+                  <div className="text-2xl font-bold text-blue-600">${volunteerDetails.cleared_amount?.toFixed(2) || '0.00'}</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Pending Amount</div>
+                  <div className="text-2xl font-bold text-orange-600">${volunteerDetails.pending_amount?.toFixed(2) || '0.00'}</div>
+                </div>
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Status</div>
+                  <div className={`text-lg font-semibold ${
+                    volunteerDetails.status === 'Fully Cleared' ? 'text-green-600' :
+                    volunteerDetails.status === 'Partially Cleared' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {volunteerDetails.status || 'Not Cleared'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Payment Breakdown */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Cash Payments</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {volunteerDetails.cash_count || 0} payments - ${volunteerDetails.cash_amount?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="text-sm font-medium text-gray-600">Zelle Payments</div>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {volunteerDetails.zelle_count || 0} payments - ${volunteerDetails.zelle_amount?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         {/* Volunteer Attendees Table */}
         <div className="overflow-x-auto">
@@ -222,6 +271,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Food</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -235,6 +285,9 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.email}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.phone}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.ticket_quantity}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+                    ${attendee.total_price?.toFixed(2) || '0.00'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       attendee.payment_mode === 'cash' 
@@ -298,6 +351,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     );
   }
@@ -807,6 +861,17 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     )}
                   </button>
                   
+                  {/* Resend QR Email Button */}
+                  <button
+                    onClick={() => setShowResendModal(true)}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors whitespace-nowrap"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Resend QR Email
+                  </button>
+                  
                   <button
                     onClick={onRefresh}
                     disabled={isLoading}
@@ -1191,6 +1256,13 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
           </>
         )}
       </div>
+      
+      {/* Resend QR Email Modal */}
+      <ResendQrEmailModal
+        isOpen={showResendModal}
+        onClose={() => setShowResendModal(false)}
+        email={selectedEmail || undefined}
+      />
     </div>
   );
 };

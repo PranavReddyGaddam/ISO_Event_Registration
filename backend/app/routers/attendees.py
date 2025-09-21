@@ -7,6 +7,8 @@ from datetime import datetime
 import logging
 import csv
 import io
+from pydantic import BaseModel, EmailStr
+from fastapi import status
 
 from app.models.attendee import (
     AttendeeCreate,
@@ -33,12 +35,82 @@ from app.models.auth import TokenData
 router = APIRouter(prefix="/api", tags=["attendees"])
 logger = logging.getLogger(__name__)
 
+@router.get("/volunteers/{volunteer_id}/details")
+async def get_volunteer_details(
+    volunteer_id: str,
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
+):
+    """Get volunteer details with financial summary."""
+    try:
+        # Get volunteer info
+        volunteer = await supabase_client.get_user_by_id(volunteer_id)
+        if not volunteer:
+            raise HTTPException(
+                status_code=404,
+                detail="Volunteer not found"
+            )
+        
+        # Get all attendees created by this volunteer (for financial calculation)
+        all_attendees, _ = await supabase_client.get_attendees_by_volunteer(
+            volunteer_id=volunteer_id,
+            limit=10000,  # Get all attendees for accurate financial calculation
+            offset=0
+        )
+        
+        # Calculate financial summary
+        total_sales = sum(float(attendee.get("total_price", 0) or 0) for attendee in all_attendees)
+        cleared_amount = float(volunteer.get("cleared_amount", 0.0) or 0.0)
+        pending_amount = total_sales - cleared_amount
+        
+        # Calculate payment breakdown
+        cash_amount = 0.0
+        zelle_amount = 0.0
+        cash_count = 0
+        zelle_count = 0
+        
+        for attendee in all_attendees:
+            payment_mode = str(attendee.get("payment_mode", "")).lower()
+            amount = float(attendee.get("total_price", 0) or 0)
+            
+            if payment_mode == "cash":
+                cash_amount += amount
+                cash_count += 1
+            elif payment_mode == "zelle":
+                zelle_amount += amount
+                zelle_count += 1
+        
+        return {
+            "volunteer_id": volunteer_id,
+            "full_name": volunteer.get("full_name"),
+            "email": volunteer.get("email"),
+            "team_role": volunteer.get("team_role"),
+            "total_attendees": len(all_attendees),
+            "total_sales": total_sales,
+            "cleared_amount": cleared_amount,
+            "pending_amount": pending_amount,
+            "cash_count": cash_count,
+            "cash_amount": cash_amount,
+            "zelle_count": zelle_count,
+            "zelle_amount": zelle_amount,
+            "status": "Fully Cleared" if pending_amount == 0 else "Partially Cleared" if cleared_amount > 0 else "Not Cleared"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting volunteer details: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve volunteer details"
+        )
+
+
 @router.get("/volunteers/{volunteer_id}/attendees", response_model=PaginatedResponse[AttendeeResponse])
 async def get_volunteer_attendees(
     volunteer_id: str,
     limit: int = 50,
     offset: int = 0,
-    current_user: TokenData = Depends(get_current_president)
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
 ):
     """Get all attendees registered by a specific volunteer."""
     try:
@@ -82,7 +154,7 @@ async def get_attendees_by_email(
     email: str,
     limit: int = 50,
     offset: int = 0,
-    current_user: TokenData = Depends(get_current_president)
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
 ):
     """Get all individual registrations for a specific email address."""
     try:
@@ -413,6 +485,82 @@ async def download_attendees_csv(
         raise HTTPException(status_code=500, detail="Failed to generate CSV file")
 
 
+class ResendQrEmailRequest(BaseModel):
+    """Model for resending QR email request."""
+    email: EmailStr
+
+
+@router.post("/attendees/resend-qr-email")
+async def resend_qr_email(
+    request: ResendQrEmailRequest,
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
+):
+    """Resend QR code emails for all registrations under a specific email."""
+    try:
+        # Get all attendees for the email
+        attendees = await supabase_client.get_attendees_with_qr_codes_by_email(request.email)
+        
+        if not attendees:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No registrations found for this email address"
+            )
+        
+        # Check if any attendees have QR codes
+        attendees_with_qr = [a for a in attendees if a.get("qr_code_id")]
+        if not attendees_with_qr:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="QR codes have not been generated for these registrations yet"
+            )
+        
+        # Get email sender
+        from app.utils.email_provider import get_email_sender
+        email_sender = get_email_sender()
+        
+        # Generate email content using the same logic as original registration
+        attendee_name = attendees_with_qr[0].get("name", "Valued Attendee")
+        total_registrations = len(attendees_with_qr)
+        total_price = sum(attendee.get("total_price", 0) for attendee in attendees_with_qr)
+        
+        # Prepare QR codes data for PDF generation (same format as original registration)
+        qr_codes_data = []
+        for i, attendee in enumerate(attendees_with_qr, 1):
+            qr_codes_data.append({
+                "qr_code_id": attendee.get("qr_code_id", ""),
+                "qr_code_url": attendee.get("qr_code_url", ""),
+                "ticket_number": i,  # Sequential ticket number for this resend
+                "total_tickets": len(attendees_with_qr),  # Total tickets being resent
+                "attendee_name": attendee.get("name", ""),
+                "attendee_email": attendee.get("email", ""),
+                "attendee_phone": attendee.get("phone", ""),
+                "price_per_ticket": attendee.get("total_price", 0)  # Each attendee record represents 1 ticket
+            })
+        
+        # Send resend email with PDF attachment
+        await send_resend_email_with_pdf_task(
+            request.email,
+            attendee_name,
+            qr_codes_data,
+            total_price
+        )
+        
+        return {
+            "message": f"QR code emails successfully resent to {request.email} for {total_registrations} registration{'s' if total_registrations > 1 else ''}",
+            "email": request.email,
+            "registrations_count": total_registrations
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resending QR email: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resend QR code email"
+        )
+
+
 async def send_registration_email_task(
     email: str,
     name: str,
@@ -456,6 +604,93 @@ async def send_registration_email_with_pdf_task(
             logger.error(f"Registration email with PDF failed to send to: {email}")
     except Exception as e:
         logger.error(f"Failed to send registration email with PDF to {email}: {e}")
+        logger.exception("Full traceback:")
+
+
+async def send_resend_email_with_pdf_task(
+    email: str,
+    name: str,
+    qr_codes_data: list,
+    total_price: float
+):
+    """Background task to send resend email with PDF attachment."""
+    try:
+        logger.info(f"Starting to send resend email with PDF to: {email}")
+        sender = get_email_sender()
+        
+        # Get event details for email content
+        event_details = await sender.get_current_event_details()
+        
+        # Generate PDF
+        from app.utils.pdf_generator import pdf_generator
+        pdf_bytes = pdf_generator.generate_qr_tickets_pdf(qr_codes_data, event_details['name'])
+        
+        # Create resend-specific email content
+        subject = f"Your {event_details['name']} Tickets - QR Codes (Resent)"
+        ticket_count = len(qr_codes_data)
+        
+        # Create resend-specific HTML content
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; background-color: #f3f4f6;">
+            <div style="background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #1f2937; margin: 0 0 10px 0;">{event_details['name']}</h1>
+                    <p style="color: #6b7280; margin: 0;">Your QR Code Tickets (Resent)</p>
+                </div>
+                
+                <div style="background-color: #dbeafe; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 30px;">
+                    <p style="margin: 0; color: #1e40af;">
+                        <strong>Hello {name},</strong><br>
+                        We've resent your QR code tickets for your convenience. Your tickets are attached to this email as a PDF file.
+                    </p>
+                </div>
+                
+                <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                    <h3 style="color: #374151; margin: 0 0 15px 0;">Ticket Summary</h3>
+                    <p><strong>Total Tickets:</strong> {ticket_count}</p>
+                    <p><strong>Total Amount:</strong> ${total_price:.2f}</p>
+                </div>
+                
+                <div class="pdf-box" style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                    <h3 style="color: #92400e; margin: 0 0 10px 0;">📄 Your QR Code Tickets</h3>
+                    <p style="color: #92400e; margin: 0;">Your QR code tickets have been attached to this email as a PDF file.</p>
+                    <p style="color: #92400e; margin: 5px 0 0 0;">Each ticket contains a unique QR code that will be scanned at check-in.</p>
+                </div>
+                
+                <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
+                    <h3 style="color: #374151; margin: 0 0 15px 0;">Check-in Instructions</h3>
+                    <ul style="color: #6b7280; margin: 0; padding-left: 20px;">
+                        <li>Present your QR code at the event entrance</li>
+                        <li>Each QR code is valid for the number of tickets purchased</li>
+                        <li>Keep your phone charged and ready</li>
+                        <li>Contact us if you have any issues</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center; color: #6b7280; font-size: 14px;">
+                    <p>If you have any questions, please contact us.</p>
+                    <p style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                        This email was resent by an event administrator.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send email with PDF attachment
+        result = await sender._send_email_with_pdf(
+            email, subject, html_content, pdf_bytes, f"{name}_tickets_resent.pdf"
+        )
+        
+        if result:
+            logger.info(f"Resend email with PDF sent successfully to: {email}")
+        else:
+            logger.error(f"Resend email with PDF failed to send to: {email}")
+            
+    except Exception as e:
+        logger.error(f"Failed to send resend email with PDF to {email}: {e}")
         logger.exception("Full traceback:")
 
 

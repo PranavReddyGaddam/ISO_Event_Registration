@@ -636,6 +636,40 @@ class SupabaseClient:
             logger.error(f"Error cleaning up expired reset tokens: {e}")
             return 0
 
+    async def get_attendees_with_qr_codes_by_email(self, email: str) -> List[Dict[str, Any]]:
+        """Get all attendees for a specific email with QR code data."""
+        try:
+            response = self.service_client.table("attendees").select(
+                "id, name, email, phone, ticket_quantity, total_price, payment_mode, "
+                "created_at, checked_in_at, created_by, qr_code_id, qr_code_url, is_checked_in"
+            ).eq("email", email).order("created_at", desc=True).execute()
+            
+            if not response.data:
+                logger.info(f"No attendees found for email: {email}")
+                return []
+            
+            attendees = response.data
+            
+            # Get user data for created_by mapping
+            user_ids = list(set(attendee.get("created_by") for attendee in attendees if attendee.get("created_by")))
+            users_data = {}
+            if user_ids:
+                users_resp = self.service_client.table("users").select("id, full_name, email").in_("id", user_ids).execute()
+                users_data = {user["id"]: user for user in users_resp.data or []}
+            
+            # Add volunteer information to each attendee
+            for attendee in attendees:
+                created_by_user = users_data.get(attendee.get("created_by"), {})
+                attendee["volunteer_name"] = created_by_user.get("full_name", "")
+                attendee["volunteer_email"] = created_by_user.get("email", "")
+            
+            logger.info(f"Found {len(attendees)} attendees for email: {email}")
+            return attendees
+            
+        except Exception as e:
+            logger.error(f"Error getting attendees by email: {e}")
+            return []
+
 
 # Global Supabase client instance
 supabase_client = SupabaseClient()

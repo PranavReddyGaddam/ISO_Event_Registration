@@ -33,6 +33,7 @@ const Dashboard: React.FC = () => {
   const [volunteerSummary, setVolunteerSummary] = useState<any[] | null>(null);
   const [attendeesPagination, setAttendeesPagination] = useState<PaginationMeta | null>(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState<any | null>(null);
+  const [volunteerDetails, setVolunteerDetails] = useState<any | null>(null);
   const [volunteerAttendees, setVolunteerAttendees] = useState<AttendeeResponse[]>([]);
   const [volunteerAttendeesPagination, setVolunteerAttendeesPagination] = useState<PaginationMeta | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
@@ -170,9 +171,21 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const loadVolunteerDetails = async (volunteerId: string) => {
+    try {
+      const response = await apiClient.get(`/api/volunteers/${volunteerId}/details`);
+      setVolunteerDetails(response);
+    } catch (error) {
+      console.error('Failed to load volunteer details:', error);
+    }
+  };
+
   const handleVolunteerClick = async (volunteer: any) => {
     setSelectedVolunteer(volunteer);
-    await loadVolunteerAttendees(volunteer.volunteer_id);
+    await Promise.all([
+      loadVolunteerDetails(volunteer.volunteer_id),
+      loadVolunteerAttendees(volunteer.volunteer_id)
+    ]);
   };
 
   const handleVolunteerAttendeesPageChange = (page: number) => {
@@ -184,6 +197,7 @@ const Dashboard: React.FC = () => {
 
   const handleBackToVolunteers = () => {
     setSelectedVolunteer(null);
+    setVolunteerDetails(null);
     setVolunteerAttendees([]);
     setVolunteerAttendeesPagination(null);
   };
@@ -337,6 +351,7 @@ const Dashboard: React.FC = () => {
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
           selectedVolunteer={selectedVolunteer}
+          volunteerDetails={volunteerDetails}
           volunteerAttendees={volunteerAttendees}
           volunteerAttendeesPagination={volunteerAttendeesPagination}
           onVolunteerClick={handleVolunteerClick}

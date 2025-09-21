@@ -20,6 +20,7 @@ from app.utils.auth import (
     hash_password,
     get_current_user,
     get_current_president,
+    get_current_president_or_finance_director,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.utils.supabase_client import supabase_client
@@ -283,9 +284,9 @@ async def get_all_users(current_user: TokenData = Depends(get_current_president)
 async def update_cleared_amount(
     user_id: str,
     cleared_data: UpdateClearedAmount,
-    current_user: TokenData = Depends(get_current_president)
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
 ):
-    """Update the cleared amount for a volunteer (president only)."""
+    """Update the cleared amount for a volunteer by adding to existing amount (incremental clearing)."""
     try:
         # Get the user to verify they exist and are a volunteer
         user = await supabase_client.get_user_by_id(user_id)
@@ -302,10 +303,14 @@ async def update_cleared_amount(
                 detail="Can only update cleared amount for volunteers"
             )
         
-        # Update the cleared amount
+        # Get current cleared amount and add the new amount (incremental clearing)
+        current_cleared = float(user.get("cleared_amount", 0.0))
+        new_total_cleared = current_cleared + cleared_data.cleared_amount
+        
+        # Update the cleared amount with the new total
         updated_user = await supabase_client.update_user_cleared_amount(
             user_id=user_id,
-            cleared_amount=cleared_data.cleared_amount
+            cleared_amount=new_total_cleared
         )
         
         if not updated_user:
