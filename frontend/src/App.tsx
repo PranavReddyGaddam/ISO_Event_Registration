@@ -114,7 +114,7 @@ const NotFound: React.FC = () => (
 const Footer: React.FC = () => (
   <footer className="bg-black/50 backdrop-blur-sm border-t border-gray-200 mt-auto relative z-10">
     <div className="container py-6">
-      <div className="text-center text-sm text-gray-500">
+      <div className="text-center text-sm text-white">
         <p>
           &copy; 2025 Volunteer Event Check-in System. Built with React,
           FastAPI, TypeScript, and Tailwind CSS.
