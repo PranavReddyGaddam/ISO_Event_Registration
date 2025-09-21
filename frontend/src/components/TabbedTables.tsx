@@ -530,7 +530,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     <button
                       onClick={handleDownloadCSV}
                       disabled={isDownloadingCSV}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isDownloadingCSV ? (
                         <>
@@ -784,7 +784,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     onClick={() => onFilterChange('checked_in')}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       filter.checked_in === true
-                        ? 'bg-green-600 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
                     }`}
                   >
@@ -804,7 +804,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     onClick={() => onFilterChange('with_food')}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       filter.food_option === 'with_food'
-                        ? 'bg-orange-600 text-white shadow-sm'
+                        ? 'bg-blue-400 text-white shadow-sm'
                         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
                     }`}
                   >
@@ -814,7 +814,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     onClick={() => onFilterChange('without_food')}
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       filter.food_option === 'without_food'
-                        ? 'bg-purple-600 text-white shadow-sm'
+                        ? 'bg-blue-500 text-white shadow-sm'
                         : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
                     }`}
                   >
@@ -841,7 +841,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   <button
                     onClick={handleDownloadAttendeesCSV}
                     disabled={isDownloadingAttendeesCSV}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                   >
                     {isDownloadingAttendeesCSV ? (
                       <>
@@ -864,7 +864,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   {/* Resend QR Email Button */}
                   <button
                     onClick={() => setShowResendModal(true)}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors whitespace-nowrap"
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-400 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-300 transition-colors whitespace-nowrap"
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
