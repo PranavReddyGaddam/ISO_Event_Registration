@@ -28,7 +28,8 @@ from app.utils.auth import (
     get_current_president, 
     get_current_volunteer_or_president,
     get_current_president_or_finance_director,
-    get_current_dashboard_user
+    get_current_dashboard_user,
+    get_current_leaderboard_user
 )
 from app.models.auth import TokenData
 
@@ -1047,7 +1048,7 @@ def filter_stats_by_role(stats: dict, user_role: str) -> dict:
 
 
 @router.get("/volunteers/leaderboard")
-async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_current_volunteer_or_president)):
+async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_current_leaderboard_user)):
     """Get volunteer leaderboard with top 3 performers and current user's rank."""
     try:
         # Get all volunteers (exclude leadership roles)

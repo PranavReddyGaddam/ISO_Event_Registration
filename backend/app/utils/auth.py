@@ -133,6 +133,16 @@ async def get_current_president_or_finance_director(current_user: TokenData = De
     return current_user
 
 
+async def get_current_leaderboard_user(current_user: TokenData = Depends(get_current_user)) -> TokenData:
+    """Ensure current user has leaderboard access (volunteer, president, or finance director)."""
+    if current_user.role not in [UserRole.VOLUNTEER, UserRole.PRESIDENT, UserRole.FINANCE_DIRECTOR]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers, presidents, and finance directors can access the leaderboard"
+        )
+    return current_user
+
+
 async def get_current_dashboard_user(current_user: TokenData = Depends(get_current_user)) -> TokenData:
     """Ensure current user has dashboard access (president or finance director)."""
     if current_user.role not in [UserRole.PRESIDENT, UserRole.FINANCE_DIRECTOR]:
