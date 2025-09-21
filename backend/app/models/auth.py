@@ -110,3 +110,37 @@ class UpdateClearedAmount(BaseModel):
         if v < 0:
             raise ValueError("Cleared amount cannot be negative")
         return v
+
+
+class ForgotPassword(BaseModel):
+    """Model for forgot password request."""
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    """Model for resetting password with token."""
+    token: str
+    new_password: str
+    
+    @validator("token")
+    def validate_token(cls, v: str) -> str:
+        """Validate token is not empty."""
+        if not v.strip():
+            raise ValueError("Reset token is required")
+        return v.strip()
+    
+    @validator("new_password")
+    def validate_new_password(cls, v: str) -> str:
+        """Validate new password strength."""
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters long")
+        return v
+
+
+class PasswordResetToken(BaseModel):
+    """Model for password reset token response."""
+    token: str
+    expires_at: datetime
+    
+    class Config:
+        from_attributes = True

@@ -4,6 +4,8 @@
 
 import React, { useState } from 'react';
 import { AttendeeResponse, PaginationMeta } from '../types';
+import { downloadCSV } from '../utils/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface TabbedTablesProps {
   // Role-based permissions
@@ -87,11 +89,54 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   const [volunteerSearchQuery, setVolunteerSearchQuery] = useState('');
   const [volunteerSortBy, setVolunteerSortBy] = useState<'tickets' | 'name'>('tickets');
   const [volunteerSortDir, setVolunteerSortDir] = useState<'asc' | 'desc'>('desc');
+  const [isDownloadingCSV, setIsDownloadingCSV] = useState(false);
+  const [isDownloadingAttendeesCSV, setIsDownloadingAttendeesCSV] = useState(false);
+
+  const { getAuthHeaders } = useAuth();
 
   const formatTimeOnly = (ts?: string) => (ts ? new Date(ts).toLocaleTimeString() : '-');
   
   // Show financial data for all roles
   const showFinancialData = true;
+
+  const handleDownloadCSV = async () => {
+    if (isDownloadingCSV) return;
+    
+    setIsDownloadingCSV(true);
+    try {
+      const headers = getAuthHeaders();
+      
+      await downloadCSV('/api/volunteers/summary/csv', undefined, headers);
+    } catch (error) {
+      console.error('Failed to download CSV:', error);
+      // You could add a toast notification here
+    } finally {
+      setIsDownloadingCSV(false);
+    }
+  };
+
+  const handleDownloadAttendeesCSV = async () => {
+    if (isDownloadingAttendeesCSV) return;
+    
+    setIsDownloadingAttendeesCSV(true);
+    try {
+      const headers = getAuthHeaders();
+      
+      // Build query parameters based on current filters
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (filter.checked_in !== undefined) params.append('checked_in', filter.checked_in.toString());
+      params.append('limit', '10000'); // Get all records
+      
+      const endpoint = `/api/attendees/csv${params.toString() ? '?' + params.toString() : ''}`;
+      await downloadCSV(endpoint, undefined, headers);
+    } catch (error) {
+      console.error('Failed to download attendees CSV:', error);
+      // You could add a toast notification here
+    } finally {
+      setIsDownloadingAttendeesCSV(false);
+    }
+  };
 
   // Filter volunteers based on search query
   const filteredVolunteers = volunteerSummary?.filter(volunteer => {
@@ -427,6 +472,30 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   />
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Download CSV Button */}
+                    <button
+                      onClick={handleDownloadCSV}
+                      disabled={isDownloadingCSV}
+                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isDownloadingCSV ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download CSV
+                        </>
+                      )}
+                    </button>
+                    
                     <label className="text-sm text-gray-700">Sort by:</label>
                     <select
                       value={volunteerSortBy}
@@ -699,7 +768,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   </button>
                 </div>
 
-                {/* Search and Refresh */}
+                {/* Search, Download and Refresh */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                   <div className="relative flex-1">
                     <input
@@ -713,6 +782,31 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                   </div>
+                  
+                  {/* Download CSV Button */}
+                  <button
+                    onClick={handleDownloadAttendeesCSV}
+                    disabled={isDownloadingAttendeesCSV}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  >
+                    {isDownloadingAttendeesCSV ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Downloading...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download CSV
+                      </>
+                    )}
+                  </button>
+                  
                   <button
                     onClick={onRefresh}
                     disabled={isLoading}

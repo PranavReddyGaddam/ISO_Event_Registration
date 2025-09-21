@@ -206,6 +206,61 @@ class AuthService {
     // In a real app, you'd decode the JWT and check expiration
     return !!this.authState.token;
   }
+
+  /**
+   * Send forgot password email
+   */
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to send reset email' }));
+        throw new Error(errorData.detail || 'Failed to send reset email');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password using token
+   */
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          token, 
+          new_password: newPassword 
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to reset password' }));
+        throw new Error(errorData.detail || 'Failed to reset password');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

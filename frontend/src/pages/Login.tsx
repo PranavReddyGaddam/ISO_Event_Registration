@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserLogin, ApiStatus } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import VolunteerSignupForm from '../components/VolunteerSignupForm';
+import { ForgotPasswordModal, VolunteerSignupForm } from '../components';
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState<UserLogin>({
@@ -17,6 +17,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showSignupForm, setShowSignupForm] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const { login, isAuthenticated, getCurrentUser } = useAuth();
   const navigate = useNavigate();
@@ -161,6 +162,17 @@ const Login: React.FC = () => {
             </button>
           </div>
 
+          {/* Forgot Password Link */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className="text-sm text-white/70 hover:text-white transition-colors underline"
+            >
+              Forgot your password?
+            </button>
+          </div>
+
           {/* Sign up button */}
           <div className="mt-4">
             <button 
@@ -185,6 +197,12 @@ const Login: React.FC = () => {
         )}
         
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+      />
     </div>
   );
 };

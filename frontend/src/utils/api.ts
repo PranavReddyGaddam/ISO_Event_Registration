@@ -143,6 +143,45 @@ class ApiClient {
       headers,
     });
   }
+
+  public async downloadFile(url: string, headers?: Record<string, string>): Promise<Blob> {
+    const fullUrl = new URL(url, this.config.baseURL);
+    const requestInit: RequestInit = {
+      method: 'GET',
+      headers: {
+        ...this.config.headers,
+        ...headers,
+      },
+    };
+
+    try {
+      const response = await fetch(fullUrl.toString(), requestInit);
+      
+      if (!response.ok) {
+        let errorData: ApiError;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = {
+            detail: response.statusText || 'Download failed',
+            status_code: response.status,
+          };
+        }
+        throw new ApiClientError(errorData.detail, response.status);
+      }
+
+      return await response.blob();
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        throw error;
+      }
+      
+      throw new ApiClientError(
+        error instanceof Error ? error.message : 'Download failed',
+        0
+      );
+    }
+  }
 }
 
 export class ApiClientError extends Error {
@@ -175,4 +214,22 @@ export const updateResource = async <T>(endpoint: string, data: unknown): Promis
 
 export const deleteResource = async <T>(endpoint: string): Promise<T> => {
   return apiClient.delete<T>(endpoint);
+};
+
+export const downloadCSV = async (endpoint: string, filename?: string, headers?: Record<string, string>): Promise<void> => {
+  const blob = await apiClient.downloadFile(endpoint, headers);
+  
+  // Create download link
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || `download_${Date.now()}.csv`;
+  
+  // Trigger download
+  document.body.appendChild(link);
+  link.click();
+  
+  // Cleanup
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
 };

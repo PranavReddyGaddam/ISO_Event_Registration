@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./components";
 // Import page components
 import Registration from "./pages/Registration";
 import Login from "./pages/Login";
+import ResetPassword from "./pages/ResetPassword";
 import CheckIn from "./pages/CheckIn";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
@@ -35,6 +36,7 @@ const App: React.FC = () => {
               {/* Public Routes */}
               <Route path="/" element={<Navigate to={localStorage.getItem('volunteer_app_token') ? window.location.pathname || '/registration' : '/login'} replace />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 path="/registration"
                 element={

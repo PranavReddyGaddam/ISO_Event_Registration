@@ -545,6 +545,96 @@ class SupabaseClient:
             
         except Exception as e:
             logger.error(f"Error initializing default users: {e}")
+    
+    # Password reset methods
+    async def create_password_reset_token(self, user_id: str, token: str, expires_at: str) -> Optional[Dict[str, Any]]:
+        """Create a password reset token."""
+        try:
+            # First, invalidate any existing tokens for this user
+            await self.invalidate_user_reset_tokens(user_id)
+            
+            token_data = {
+                "user_id": user_id,
+                "token": token,
+                "expires_at": expires_at,
+                "used": False
+            }
+            
+            response = self.service_client.table("password_reset_tokens").insert(token_data).execute()
+            if response.data:
+                return response.data[0]
+            return None
+        except Exception as e:
+            logger.error(f"Error creating password reset token: {e}")
+            return None
+    
+    async def get_password_reset_token(self, token: str) -> Optional[Dict[str, Any]]:
+        """Get a password reset token by token string."""
+        try:
+            from datetime import datetime
+            
+            response = self.service_client.table("password_reset_tokens").select("*").eq("token", token).execute()
+            if not response.data:
+                return None
+            
+            token_data = response.data[0]
+            
+            # Check if token is expired
+            expires_at = datetime.fromisoformat(token_data["expires_at"].replace('Z', '+00:00'))
+            if datetime.now(expires_at.tzinfo) > expires_at:
+                logger.warning(f"Password reset token expired: {token}")
+                return None
+            
+            # Check if token is already used
+            if token_data.get("used", False):
+                logger.warning(f"Password reset token already used: {token}")
+                return None
+            
+            return token_data
+        except Exception as e:
+            logger.error(f"Error getting password reset token: {e}")
+            return None
+    
+    async def mark_password_reset_token_used(self, token: str) -> bool:
+        """Mark a password reset token as used."""
+        try:
+            response = self.service_client.table("password_reset_tokens").update({
+                "used": True
+            }).eq("token", token).execute()
+            
+            return bool(response.data)
+        except Exception as e:
+            logger.error(f"Error marking password reset token as used: {e}")
+            return False
+    
+    async def invalidate_user_reset_tokens(self, user_id: str) -> None:
+        """Invalidate all existing reset tokens for a user."""
+        try:
+            self.service_client.table("password_reset_tokens").update({
+                "used": True
+            }).eq("user_id", user_id).eq("used", False).execute()
+            
+            logger.info(f"Invalidated existing reset tokens for user: {user_id}")
+        except Exception as e:
+            logger.error(f"Error invalidating user reset tokens: {e}")
+    
+    async def cleanup_expired_reset_tokens(self) -> int:
+        """Clean up expired password reset tokens."""
+        try:
+            from datetime import datetime
+            
+            # Delete tokens that are expired or older than 24 hours
+            cutoff_time = (datetime.utcnow()).isoformat()
+            
+            response = self.service_client.table("password_reset_tokens").delete().lt("expires_at", cutoff_time).execute()
+            
+            deleted_count = len(response.data) if response.data else 0
+            logger.info(f"Cleaned up {deleted_count} expired password reset tokens")
+            
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Error cleaning up expired reset tokens: {e}")
+            return 0
 
 
 # Global Supabase client instance

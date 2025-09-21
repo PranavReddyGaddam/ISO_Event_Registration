@@ -49,8 +49,8 @@ class MinimalSendGridSender:
     """
 
     def __init__(self, from_email: Optional[str] = None, reply_to: Optional[str] = None):
-        self.from_email = from_email
-        self.reply_to = reply_to
+        self.from_email = from_email or settings.sendgrid_from_email or settings.gmail_email
+        self.reply_to = reply_to or settings.sendgrid_reply_to_email
 
     def send_html(self, to_email: str, subject: str, html_content: str) -> bool:
         (
@@ -77,7 +77,7 @@ class MinimalSendGridSender:
             if self.reply_to:
                 message.reply_to = Email(self.reply_to)
 
-            client = SendGridAPIClient()
+            client = SendGridAPIClient(api_key=settings.sendgrid_api_key)
             response = client.send(message)
             logger.info("SendGrid sent status=%s", getattr(response, "status_code", None))
             return int(getattr(response, "status_code", 0)) in (200, 202)
@@ -101,6 +101,14 @@ class MinimalSendGridSender:
     async def _send_email(self, to_email: str, subject: str, html_content: str) -> bool:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.send_html, to_email, subject, html_content)
+
+    async def send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None) -> bool:
+        """Send email with both HTML and text content (for password reset)."""
+        try:
+            return await self._send_email(to_email, subject, html_content)
+        except Exception as e:
+            logger.error(f"SendGrid send_email error: {e}")
+            return False
 
     async def _send_email_with_pdf(self, to_email: str, subject: str, html_content: str, pdf_bytes: bytes, filename: str) -> bool:
         (
@@ -135,7 +143,7 @@ class MinimalSendGridSender:
                 Disposition("attachment"),
             )
 
-            client = SendGridAPIClient()
+            client = SendGridAPIClient(api_key=settings.sendgrid_api_key)
             response = client.send(message)
             logger.info("SendGrid sent (pdf) status=%s", getattr(response, "status_code", None))
             return int(getattr(response, "status_code", 0)) in (200, 202)
@@ -514,7 +522,7 @@ class SendGridEmailSender:
             )
             if settings.sendgrid_reply_to_email:
                 message.reply_to = Email(settings.sendgrid_reply_to_email)
-            sg = SendGridAPIClient()
+            sg = SendGridAPIClient(api_key=settings.sendgrid_api_key)
             response = sg.send(message)
             logger.info(f"SendGrid email sent to {to_email} status={response.status_code}")
             return int(getattr(response, "status_code", 0)) in (200, 202)
@@ -572,7 +580,7 @@ class SendGridEmailSender:
             )
             message.attachment = attachment
 
-            sg = SendGridAPIClient()
+            sg = SendGridAPIClient(api_key=settings.sendgrid_api_key)
             response = sg.send(message)
             logger.info(
                 f"SendGrid email with attachment sent to {to_email} status={response.status_code}"

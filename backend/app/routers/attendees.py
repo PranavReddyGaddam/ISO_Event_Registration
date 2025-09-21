@@ -1,9 +1,12 @@
 """Attendee management API routes."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
+from fastapi.responses import Response
+from typing import List, Optional
 from datetime import datetime
 import logging
+import csv
+import io
 
 from app.models.attendee import (
     AttendeeCreate,
@@ -204,6 +207,210 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
     except Exception as e:
         logger.error(f"Error getting volunteer summary: {e}")
         raise HTTPException(status_code=500, detail="Failed to get volunteer summary")
+
+
+@router.get("/volunteers/summary/csv")
+async def download_volunteer_summary_csv(current_user: TokenData = Depends(get_current_president_or_finance_director)):
+    """Download volunteer summary data as CSV file."""
+    try:
+        # Get the same data as the volunteer summary endpoint
+        volunteers_resp = (
+            supabase_client.service_client
+            .table("users")
+            .select("id, full_name, email, team_role, role, cleared_amount")
+            .in_("role", ["volunteer", "president", "finance_director"])
+            .execute()
+        )
+        volunteers = volunteers_resp.data or []
+        
+        # Get attendees data for statistics
+        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode").execute()
+        attendees_data = attendees_resp.data or []
+        
+        # Create a map of volunteer statistics
+        volunteer_stats = {}
+        for attendee in attendees_data:
+            vid = attendee.get("created_by")
+            if vid and vid not in volunteer_stats:
+                volunteer_stats[vid] = {
+                    "total_attendees": 0,
+                    "cash_count": 0,
+                    "cash_amount": 0.0,
+                    "zelle_count": 0,
+                    "zelle_amount": 0.0,
+                }
+            
+            if vid in volunteer_stats:
+                volunteer_stats[vid]["total_attendees"] += 1
+                if str(attendee.get("payment_mode", "")).lower() == "cash":
+                    volunteer_stats[vid]["cash_count"] += 1
+                    volunteer_stats[vid]["cash_amount"] += float(attendee.get("total_price", 0))
+                elif str(attendee.get("payment_mode", "")).lower() == "zelle":
+                    volunteer_stats[vid]["zelle_count"] += 1
+                    volunteer_stats[vid]["zelle_amount"] += float(attendee.get("total_price", 0))
+        
+        # Prepare CSV data
+        csv_data = []
+        for volunteer in volunteers:
+            vid = volunteer["id"]
+            stats = volunteer_stats.get(vid, {
+                "total_attendees": 0,
+                "cash_count": 0,
+                "cash_amount": 0.0,
+                "zelle_count": 0,
+                "zelle_amount": 0.0,
+            })
+            
+            # Calculate totals
+            total_collected = stats["cash_amount"] + stats["zelle_amount"]
+            cleared_amount = float(volunteer.get("cleared_amount", 0.0))
+            pending_amount = total_collected - cleared_amount
+            
+            # Determine team role display
+            team_role = (
+                volunteer.get("team_role")
+                if volunteer.get("role") == "volunteer"
+                else ("President" if volunteer.get("role") == "president" else "Finance Director")
+            )
+            
+            csv_data.append({
+                "Full Name": volunteer.get("full_name", ""),
+                "Email": volunteer.get("email", ""),
+                "Team Role": team_role,
+                "Total Tickets Sold": stats["total_attendees"],
+                "Cash Count": stats["cash_count"],
+                "Cash Amount": f"${stats['cash_amount']:.2f}",
+                "Zelle Count": stats["zelle_count"],
+                "Zelle Amount": f"${stats['zelle_amount']:.2f}",
+                "Total Collected": f"${total_collected:.2f}",
+                "Cleared Amount": f"${cleared_amount:.2f}",
+                "Pending Amount": f"${pending_amount:.2f}",
+                "Status": "Cleared" if pending_amount == 0 else "Pending" if cleared_amount == 0 else "Partially Cleared"
+            })
+        
+        # Create CSV content
+        output = io.StringIO()
+        if csv_data:
+            fieldnames = csv_data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_data)
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Volunteer_Data_{timestamp}.csv"
+        
+        # Return CSV file as response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating volunteer summary CSV: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate CSV file")
+
+
+@router.get("/attendees/csv")
+async def download_attendees_csv(
+    search: str = Query(""),
+    checked_in: Optional[bool] = Query(None),
+    limit: int = Query(1000, le=10000),  # Allow up to 10,000 records
+    offset: int = Query(0, ge=0),
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
+):
+    """Download attendees data as CSV file."""
+    try:
+        # Build filter parameters
+        filter_params = {
+            "search": search,
+            "limit": limit,
+            "offset": offset
+        }
+        
+        if checked_in is not None:
+            filter_params["checked_in"] = checked_in
+        
+        # Get attendees data using the same logic as the regular endpoint
+        attendees_resp = supabase_client.client.table("attendees").select(
+            "id, name, email, phone, ticket_quantity, total_price, payment_mode, "
+            "created_at, checked_in_at, created_by, qr_code_id, is_checked_in"
+        )
+        
+        # Apply filters
+        if search:
+            attendees_resp = attendees_resp.or_(
+                f"name.ilike.%{search}%,email.ilike.%{search}%,phone.ilike.%{search}%"
+            )
+        
+        if checked_in is not None:
+            if checked_in:
+                attendees_resp = attendees_resp.not_.is_("checked_in_at", "null")
+            else:
+                attendees_resp = attendees_resp.is_("checked_in_at", "null")
+        
+        # Apply pagination
+        attendees_resp = attendees_resp.range(offset, offset + limit - 1)
+        
+        # Execute query
+        response = attendees_resp.execute()
+        attendees_data = response.data or []
+        
+        # Get user data for created_by mapping
+        user_ids = list(set(attendee.get("created_by") for attendee in attendees_data if attendee.get("created_by")))
+        users_data = {}
+        if user_ids:
+            users_resp = supabase_client.service_client.table("users").select("id, full_name, email").in_("id", user_ids).execute()
+            users_data = {user["id"]: user for user in users_resp.data or []}
+        
+        # Prepare CSV data
+        csv_data = []
+        for attendee in attendees_data:
+            created_by_user = users_data.get(attendee.get("created_by"), {})
+            
+            csv_data.append({
+                "Full Name": attendee.get("name", ""),
+                "Email": attendee.get("email", ""),
+                "Phone": attendee.get("phone", ""),
+                "Ticket Quantity": attendee.get("ticket_quantity", 0),
+                "Total Price": f"${attendee.get('total_price', 0):.2f}",
+                "Payment Mode": attendee.get("payment_mode", ""),
+                "Registration Date": datetime.fromisoformat(attendee.get("created_at", "")).strftime("%Y-%m-%d %H:%M:%S") if attendee.get("created_at") else "",
+                "Checked In": "Yes" if attendee.get("checked_in_at") else "No",
+                "Check-in Date": datetime.fromisoformat(attendee.get("checked_in_at", "")).strftime("%Y-%m-%d %H:%M:%S") if attendee.get("checked_in_at") else "",
+                "Registered By": created_by_user.get("full_name", ""),
+                "QR Code ID": attendee.get("qr_code_id", "")
+            })
+        
+        # Create CSV content
+        output = io.StringIO()
+        if csv_data:
+            fieldnames = csv_data[0].keys()
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(csv_data)
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Attendees_Data_{timestamp}.csv"
+        
+        # Return CSV file as response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating attendees CSV: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate CSV file")
 
 
 async def send_registration_email_task(

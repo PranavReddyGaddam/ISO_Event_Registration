@@ -10,7 +10,9 @@ from app.models.auth import (
     ChangePassword, 
     UserCreate,
     TokenData,
-    UpdateClearedAmount
+    UpdateClearedAmount,
+    ForgotPassword,
+    ResetPassword
 )
 from app.utils.auth import (
     verify_password, 
@@ -26,6 +28,27 @@ import logging
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 logger = logging.getLogger(__name__)
 security = HTTPBearer()
+
+
+def _get_frontend_url_for_email() -> str:
+    """Get the appropriate frontend URL for email links based on environment."""
+    from app.config import settings
+    
+    cors_origins = settings.cors_origins if isinstance(settings.cors_origins, list) else []
+    
+    # In production, prefer non-localhost URLs
+    production_urls = [url for url in cors_origins if not url.startswith('http://localhost')]
+    if production_urls:
+        # Return the first production URL (usually your main domain)
+        return production_urls[0]
+    
+    # Fallback to localhost for development
+    localhost_urls = [url for url in cors_origins if url.startswith('http://localhost')]
+    if localhost_urls:
+        return localhost_urls[0]
+    
+    # Ultimate fallback
+    return "http://localhost:5173"
 
 
 @router.post("/login", response_model=Token)
@@ -309,4 +332,179 @@ async def update_cleared_amount(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update cleared amount"
+        )
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPassword):
+    """Send password reset email."""
+    try:
+        # Check if user exists
+        user_data = await supabase_client.get_user_by_email(request.email)
+        if not user_data:
+            # Don't reveal if email exists or not for security
+            return {"message": "If an account with that email exists, a password reset link has been sent."}
+        
+        # Check if user is active
+        if not user_data.get("is_active", True):
+            return {"message": "If an account with that email exists, a password reset link has been sent."}
+        
+        # Generate secure reset token
+        import secrets
+        import string
+        
+        # Create a secure random token
+        alphabet = string.ascii_letters + string.digits
+        reset_token = ''.join(secrets.choice(alphabet) for _ in range(64))
+        
+        # Set expiration time (30 minutes from now)
+        expires_at = datetime.utcnow() + timedelta(minutes=30)
+        
+        # Create reset token in database
+        token_record = await supabase_client.create_password_reset_token(
+            user_id=user_data["id"],
+            token=reset_token,
+            expires_at=expires_at.isoformat()
+        )
+        
+        if not token_record:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create reset token"
+            )
+        
+        # Send reset email
+        from app.utils.email_provider import get_email_sender
+        from app.config import settings
+        
+        email_sender = get_email_sender()
+        
+        # Create reset URL (automatically uses correct URL based on environment)
+        # Get the primary frontend URL from CORS origins
+        frontend_url = _get_frontend_url_for_email()
+        reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+        
+        # Email content
+        subject = "Password Reset Request"
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px;">
+                <h2 style="color: #333; margin-bottom: 20px;">Password Reset Request</h2>
+                <p style="color: #666; line-height: 1.6;">
+                    Hello {user_data['full_name']},
+                </p>
+                <p style="color: #666; line-height: 1.6;">
+                    You requested a password reset for your account. Click the button below to reset your password:
+                </p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+                        Reset Password
+                    </a>
+                </div>
+                <p style="color: #666; line-height: 1.6; font-size: 14px;">
+                    If the button doesn't work, copy and paste this link into your browser:
+                </p>
+                <p style="color: #007bff; font-size: 14px; word-break: break-all;">
+                    {reset_url}
+                </p>
+                <p style="color: #666; line-height: 1.6; font-size: 14px;">
+                    This link will expire in 30 minutes for security reasons.
+                </p>
+                <p style="color: #666; line-height: 1.6; font-size: 14px;">
+                    If you didn't request this password reset, please ignore this email.
+                </p>
+                <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    This is an automated message. Please do not reply to this email.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Password Reset Request
+        
+        Hello {user_data['full_name']},
+        
+        You requested a password reset for your account. Please visit the following link to reset your password:
+        
+        {reset_url}
+        
+        This link will expire in 30 minutes for security reasons.
+        
+        If you didn't request this password reset, please ignore this email.
+        
+        This is an automated message. Please do not reply to this email.
+        """
+        
+        # Send email
+        await email_sender.send_email(
+            to_email=request.email,
+            subject=subject,
+            html_content=html_content,
+            text_content=text_content
+        )
+        
+        return {"message": "If an account with that email exists, a password reset link has been sent."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Forgot password error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process password reset request"
+        )
+
+
+@router.post("/reset-password")
+async def reset_password(request: ResetPassword):
+    """Reset password using token."""
+    try:
+        # Validate reset token
+        token_data = await supabase_client.get_password_reset_token(request.token)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token"
+            )
+        
+        # Get user data
+        user_data = await supabase_client.get_user_by_id(token_data["user_id"])
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Hash new password
+        new_password_hash = hash_password(request.new_password)
+        
+        # Update password in database
+        response = supabase_client.service_client.table("users").update({
+            "password_hash": new_password_hash,
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", token_data["user_id"]).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password"
+            )
+        
+        # Mark token as used
+        await supabase_client.mark_password_reset_token_used(request.token)
+        
+        return {"message": "Password reset successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reset password error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password"
         )

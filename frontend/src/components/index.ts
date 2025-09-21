@@ -1,5 +1,6 @@
 export { default as ChangePasswordForm } from './ChangePasswordForm';
 export { default as EventManager } from './EventManager';
+export { default as ForgotPasswordModal } from './ForgotPasswordModal';
 export { Navigation } from './Navigation';
 export { default as Pagination } from './Pagination';
 export { default as PricingManager } from './PricingManager';

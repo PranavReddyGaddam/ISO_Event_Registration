@@ -17,6 +17,20 @@ CREATE TABLE public.users (
     updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
+-- Create password reset tokens table
+CREATE TABLE public.password_reset_tokens (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    
+    -- Constraints
+    CONSTRAINT password_reset_tokens_expires_at_check CHECK (expires_at > created_at),
+    CONSTRAINT password_reset_tokens_token_length_check CHECK (length(token) >= 32)
+);
+
 -- Create volunteer applications table
 CREATE TABLE public.volunteer_applications (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -92,6 +106,11 @@ CREATE INDEX idx_users_email ON public.users(email);
 CREATE INDEX idx_users_role ON public.users(role);
 CREATE INDEX idx_users_is_active ON public.users(is_active);
 
+CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens(user_id);
+CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens(token);
+CREATE INDEX idx_password_reset_tokens_expires_at ON public.password_reset_tokens(expires_at);
+CREATE INDEX idx_password_reset_tokens_used ON public.password_reset_tokens(used);
+
 CREATE INDEX idx_volunteer_applications_email ON public.volunteer_applications(email);
 CREATE INDEX idx_volunteer_applications_status ON public.volunteer_applications(status);
 CREATE INDEX idx_volunteer_applications_created_at ON public.volunteer_applications(created_at);
@@ -139,6 +158,10 @@ CREATE TRIGGER update_ticket_pricing_updated_at
     BEFORE UPDATE ON public.ticket_pricing 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_password_reset_tokens_updated_at 
+    BEFORE UPDATE ON public.password_reset_tokens 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Create function to automatically set checked_in_at when is_checked_in becomes true
 CREATE OR REPLACE FUNCTION set_checked_in_at()
 RETURNS TRIGGER AS $$
@@ -164,6 +187,7 @@ CREATE TRIGGER set_attendee_checked_in_at
 
 -- Row Level Security (RLS) Policies
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.password_reset_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.volunteer_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.attendees ENABLE ROW LEVEL SECURITY;
@@ -178,6 +202,16 @@ CREATE POLICY "Users can be created by service role" ON public.users
 
 CREATE POLICY "Users can update their own data" ON public.users
     FOR UPDATE USING (auth.uid()::text = id::text);
+
+-- Password reset tokens policies
+CREATE POLICY "Password reset tokens can be created by service role" ON public.password_reset_tokens
+    FOR INSERT WITH CHECK (auth.role() = 'service_role');
+
+CREATE POLICY "Password reset tokens can be viewed by service role" ON public.password_reset_tokens
+    FOR SELECT USING (auth.role() = 'service_role');
+
+CREATE POLICY "Password reset tokens can be updated by service role" ON public.password_reset_tokens
+    FOR UPDATE USING (auth.role() = 'service_role');
 
 -- Volunteer applications policies
 CREATE POLICY "Volunteer applications can be created by everyone" ON public.volunteer_applications
@@ -298,6 +332,7 @@ GROUP BY e.id, e.name;
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
 GRANT ALL ON public.users TO postgres, anon, authenticated, service_role;
+GRANT ALL ON public.password_reset_tokens TO postgres, anon, authenticated, service_role;
 GRANT ALL ON public.volunteer_applications TO postgres, anon, authenticated, service_role;
 GRANT ALL ON public.events TO postgres, anon, authenticated, service_role;
 GRANT ALL ON public.attendees TO postgres, anon, authenticated, service_role;
@@ -306,6 +341,7 @@ GRANT SELECT ON public.event_stats TO postgres, anon, authenticated, service_rol
 
 -- Comments for documentation
 COMMENT ON TABLE public.users IS 'Users table for authentication (presidents and volunteers)';
+COMMENT ON TABLE public.password_reset_tokens IS 'Password reset tokens table for secure password reset functionality';
 COMMENT ON TABLE public.volunteer_applications IS 'Volunteer applications table for signup and approval workflow';
 COMMENT ON TABLE public.events IS 'Events table for storing event information';
 COMMENT ON TABLE public.attendees IS 'Attendees table for storing registration and check-in data';
