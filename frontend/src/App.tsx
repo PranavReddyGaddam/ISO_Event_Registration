@@ -16,6 +16,7 @@ import ResetPassword from "./pages/ResetPassword";
 import CheckIn from "./pages/CheckIn";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Uploads from "./pages/Uploads";
 
 import "./styles/main.css";
 
@@ -60,6 +61,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute allowedRoles={["president", "finance_director"]}>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/uploads"
+                element={
+                  <ProtectedRoute allowedRoles={["president", "finance_director"]}>
+                    <Uploads />
                   </ProtectedRoute>
                 }
               />

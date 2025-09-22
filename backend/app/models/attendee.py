@@ -66,6 +66,7 @@ class AttendeeResponse(AttendeeBase):
     checked_in_at: Optional[datetime] = None
     is_checked_in: bool = False
     qr_code_url: Optional[str] = None
+    transaction_screenshot_url: Optional[str] = None
     
     # Volunteer information (who sold the ticket)
     created_by: Optional[str] = None

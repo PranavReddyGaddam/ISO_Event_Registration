@@ -87,6 +87,7 @@ CREATE TABLE public.attendees (
     ticket_quantity INTEGER NOT NULL DEFAULT 1 CHECK (ticket_quantity >= 1 AND ticket_quantity <= 20),
     total_price DECIMAL(10,2) NOT NULL CHECK (total_price >= 0),
     payment_mode VARCHAR(20) NOT NULL DEFAULT 'cash' CHECK (payment_mode IN ('cash','zelle')),
+    transaction_screenshot_url TEXT,
     created_by UUID REFERENCES public.users(id),
     qr_code_id UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
     qr_code_url TEXT,
@@ -275,12 +276,34 @@ CREATE POLICY "Ticket pricing can be managed by presidents only" ON public.ticke
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('qr-codes', 'qr-codes', true);
 
+-- Create storage bucket for transaction screenshots
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('transaction-screenshots', 'transaction-screenshots', false);
+
 -- Storage policies for QR codes
 CREATE POLICY "QR codes are publicly viewable" ON storage.objects
     FOR SELECT USING (bucket_id = 'qr-codes');
 
 CREATE POLICY "QR codes can be uploaded by everyone" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'qr-codes');
+
+-- Storage policies for transaction screenshots
+CREATE POLICY "Transaction screenshots are viewable by presidents and finance directors" ON storage.objects
+    FOR SELECT USING (
+        bucket_id = 'transaction-screenshots' AND
+        EXISTS (
+            SELECT 1 FROM public.users 
+            WHERE users.id::text = auth.uid()::text 
+            AND users.role IN ('president', 'finance_director')
+            AND users.is_active = true
+        )
+    );
+
+CREATE POLICY "Transaction screenshots can be uploaded by authenticated users" ON storage.objects
+    FOR INSERT WITH CHECK (
+        bucket_id = 'transaction-screenshots' AND
+        auth.role() = 'authenticated'
+    );
 
 -- Insert a default event (optional)
 INSERT INTO public.events (name, description, event_date, location) 

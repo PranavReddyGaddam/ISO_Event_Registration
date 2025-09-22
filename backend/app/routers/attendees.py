@@ -1,12 +1,13 @@
 """Attendee management API routes."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form
 from fastapi.responses import Response
 from typing import List, Optional
 from datetime import datetime
 import logging
 import csv
 import io
+import uuid
 from pydantic import BaseModel, EmailStr
 from fastapi import status
 
@@ -29,7 +30,8 @@ from app.utils.auth import (
     get_current_volunteer_or_president,
     get_current_president_or_finance_director,
     get_current_dashboard_user,
-    get_current_leaderboard_user
+    get_current_leaderboard_user,
+    get_current_volunteer_president_or_finance_director
 )
 from app.models.auth import TokenData
 
@@ -702,7 +704,7 @@ async def send_resend_email_with_pdf_task(
 async def register_attendee(
     attendee: AttendeeCreate,
     background_tasks: BackgroundTasks,
-    current_user: TokenData = Depends(get_current_volunteer_or_president)
+    current_user: TokenData = Depends(get_current_volunteer_president_or_finance_director)
 ):
     """Register a new attendee and generate QR code.
     
@@ -743,17 +745,30 @@ async def register_attendee(
                     # Determine price based on food option
                     if "food_option" in tier_data:
                         if tier_data["food_option"] == attendee.food_option:
-                            price_per_ticket = float(tier_data["price_per_ticket"])
+                            base_price = float(tier_data["price_per_ticket"])
+                            
+                            # Add $1 for Zelle payments
+                            if attendee.payment_mode == "zelle":
+                                price_per_ticket = base_price + 1.00
+                            else:
+                                price_per_ticket = base_price
                             break
                     else:
                         # No food_option column - use price mapping
                         # $15.00 = without_food, $18.00 = with_food
                         if attendee.food_option == "without_food" and float(tier_data["price_per_ticket"]) == 15.00:
-                            price_per_ticket = 15.00
-                            break
+                            base_price = 15.00
                         elif attendee.food_option == "with_food" and float(tier_data["price_per_ticket"]) == 18.00:
-                            price_per_ticket = 18.00
-                            break
+                            base_price = 18.00
+                        else:
+                            continue
+                        
+                        # Add $1 for Zelle payments
+                        if attendee.payment_mode == "zelle":
+                            price_per_ticket = base_price + 1.00
+                        else:
+                            price_per_ticket = base_price
+                        break
             
             if price_per_ticket is None:
                 raise HTTPException(
@@ -1202,4 +1217,166 @@ async def get_event_stats(current_user: TokenData = Depends(get_current_dashboar
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve event statistics"
+        )
+
+
+@router.post("/upload-transaction-screenshot")
+async def upload_transaction_screenshot(
+    file: UploadFile = File(...),
+    attendee_id: str = Form(None),
+    current_user: TokenData = Depends(get_current_volunteer_or_president)
+):
+    """Upload transaction screenshot for Zelle payment verification."""
+    try:
+        # Validate attendee_id is provided
+        if not attendee_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Attendee ID is required for transaction screenshot upload"
+            )
+        
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid file type. Only image files (JPEG, PNG, GIF, WebP) are allowed."
+            )
+        
+        # Validate file size (2MB limit)
+        file_content = await file.read()
+        if len(file_content) > 2 * 1024 * 1024:  # 2MB
+            raise HTTPException(
+                status_code=400,
+                detail="File size too large. Maximum size is 2MB."
+            )
+        
+        # Generate unique filename
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+        unique_filename = f"transaction_{uuid.uuid4()}.{file_extension}"
+        file_path = f"screenshots/{unique_filename}"
+        
+        # Upload to Supabase storage
+        upload_response = supabase_client.service_client.storage.from_("transaction-screenshots").upload(
+            file_path,
+            file_content,
+            {"content-type": file.content_type}
+        )
+        
+        if not upload_response:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to upload file to storage"
+            )
+        
+        # Get signed URL for private bucket (valid for 1 hour)
+        signed_url_response = supabase_client.service_client.storage.from_("transaction-screenshots").create_signed_url(file_path, 3600)
+        public_url = signed_url_response.get('signedURL') if isinstance(signed_url_response, dict) else signed_url_response
+        
+        # Update the attendee record with the screenshot URL
+        update_response = supabase_client.client.table("attendees").update({
+            "transaction_screenshot_url": public_url
+        }).eq("id", attendee_id).execute()
+        
+        if not update_response.data:
+            raise HTTPException(
+                status_code=404,
+                detail="Attendee not found"
+            )
+        
+        return {
+            "success": True,
+            "message": "Transaction screenshot uploaded successfully",
+            "file_url": public_url,
+            "attendee_id": attendee_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading transaction screenshot: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to upload transaction screenshot"
+        )
+
+
+@router.get("/transaction-screenshots")
+async def get_transaction_screenshots(
+    current_user: TokenData = Depends(get_current_dashboard_user)
+):
+    """Get all transaction screenshots for admin review (President and Finance Director only)."""
+    try:
+        # Get all attendees with transaction screenshots
+        # Fetch attendees using anon client; avoid cross-table join due to RLS on users
+        response = supabase_client.client.table("attendees").select(
+            "id, name, email, phone, ticket_quantity, total_price, payment_mode, "
+            "transaction_screenshot_url, created_at, created_by"
+        ).not_.is_("transaction_screenshot_url", "null").order("created_at", desc=True).execute()
+        
+        if not response.data:
+            return []
+        
+        # Build user lookup using service client (bypasses RLS)
+        user_map = {}
+        try:
+            user_ids = list({a.get("created_by") for a in (response.data or []) if a.get("created_by")})
+            if user_ids:
+                users_resp = supabase_client.service_client.table("users").select("id, full_name, email, role").in_("id", user_ids).execute()
+                user_map = {u["id"]: u for u in (users_resp.data or [])}
+        except Exception as e:
+            logger.warning(f"Failed to fetch user info for screenshots: {e}")
+
+        # Format the response
+        screenshots = []
+        for attendee in response.data:
+            if not attendee:
+                continue
+                
+            volunteer_info = user_map.get(attendee.get("created_by"), {})
+            screenshots.append({
+                "attendee_id": attendee.get("id"),
+                "attendee_name": attendee.get("name"),
+                "attendee_email": attendee.get("email"),
+                "attendee_phone": attendee.get("phone"),
+                "ticket_quantity": attendee.get("ticket_quantity"),
+                "total_price": attendee.get("total_price"),
+                "payment_mode": attendee.get("payment_mode"),
+                "transaction_screenshot_url": attendee.get("transaction_screenshot_url"),
+                "created_at": attendee.get("created_at"),
+                # Who sold/registered
+                "created_by": attendee.get("created_by"),
+                "volunteer_name": volunteer_info.get("full_name") if volunteer_info else None,
+                "volunteer_email": volunteer_info.get("email") if volunteer_info else None,
+                "volunteer_role": volunteer_info.get("role") if volunteer_info else None
+            })
+        
+        # Refresh signed URLs for each screenshot (since they expire)
+        for screenshot in screenshots:
+            if screenshot.get("transaction_screenshot_url"):
+                try:
+                    # Extract file path from the stored URL
+                    stored_url = screenshot["transaction_screenshot_url"]
+                    if "screenshots/" in stored_url:
+                        # Extract the file path from the URL
+                        file_path = stored_url.split("screenshots/")[-1].split("?")[0]
+                        file_path = f"screenshots/{file_path}"
+                        
+                        # Generate new signed URL
+                        signed_url_response = supabase_client.service_client.storage.from_("transaction-screenshots").create_signed_url(file_path, 3600)
+                        new_url = signed_url_response.get('signedURL') if isinstance(signed_url_response, dict) else signed_url_response
+                        
+                        if new_url:
+                            screenshot["transaction_screenshot_url"] = new_url
+                except Exception as e:
+                    logger.warning(f"Failed to refresh signed URL for screenshot: {e}")
+                    # Keep the old URL if refresh fails
+        
+        return screenshots
+        
+    except Exception as e:
+        logger.error(f"Error getting transaction screenshots: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve transaction screenshots"
         )

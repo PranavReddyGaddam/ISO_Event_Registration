@@ -51,12 +51,20 @@ export const Navigation: React.FC = () => {
                 )}
                 
                 {(isPresident() || isFinanceDirector()) && (
-                  <Link 
-                    to="/dashboard" 
-                    className={`nav-item ${isActivePath('/dashboard') ? 'nav-item-active' : 'nav-item-inactive'}`}
-                  >
-                    Dashboard
-                  </Link>
+                  <>
+                    <Link 
+                      to="/dashboard" 
+                      className={`nav-item ${isActivePath('/dashboard') ? 'nav-item-active' : 'nav-item-inactive'}`}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link 
+                      to="/uploads" 
+                      className={`nav-item ${isActivePath('/uploads') ? 'nav-item-active' : 'nav-item-inactive'}`}
+                    >
+                      Uploads
+                    </Link>
+                  </>
                 )}
                 
                 <div className="flex items-center space-x-2 ml-4">
@@ -153,17 +161,30 @@ export const Navigation: React.FC = () => {
                   )}
 
                   {(isPresident() || isFinanceDirector()) && (
-                    <Link
-                      to="/dashboard"
-                      onClick={closeMobileMenu}
-                      className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                        isActivePath('/dashboard')
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
-                      }`}
-                    >
-                      Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        to="/dashboard"
+                        onClick={closeMobileMenu}
+                        className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                          isActivePath('/dashboard')
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/uploads"
+                        onClick={closeMobileMenu}
+                        className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                          isActivePath('/uploads')
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        Uploads
+                      </Link>
+                    </>
                   )}
 
                   <Link

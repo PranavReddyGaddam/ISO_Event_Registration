@@ -42,7 +42,14 @@ class ApiClient {
 
     // Add body for POST/PUT/PATCH requests
     if (config.data && ['POST', 'PUT', 'PATCH'].includes(config.method)) {
-      requestInit.body = JSON.stringify(config.data);
+      if (config.data instanceof FormData) {
+        // For FormData, don't stringify and don't set Content-Type (let browser set it with boundary)
+        requestInit.body = config.data;
+        // Remove Content-Type header for FormData to let browser set it with boundary
+        delete (requestInit.headers as Record<string, string>)['Content-Type'];
+      } else {
+        requestInit.body = JSON.stringify(config.data);
+      }
     }
 
     try {

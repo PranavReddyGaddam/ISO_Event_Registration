@@ -27,12 +27,14 @@ const Registration: React.FC = () => {
   const [, setLoadingPricing] = useState(false);
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
+  const [transactionScreenshot, setTransactionScreenshot] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
 
   const apiClient = useApiClient();
   const { isPresident, isAuthenticated, isLoading } = useAuth();
 
 
-  const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food') => {
+  const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food', paymentMode: 'cash' | 'zelle' = 'cash') => {
     if (quantity < 1 || quantity > 20) return;
     
     setLoadingPricing(true);
@@ -41,7 +43,7 @@ const Registration: React.FC = () => {
       const eventsResponse = await apiClient.get<{id: string, name: string}[]>('/api/events');
       if (eventsResponse && eventsResponse.length > 0) {
         const eventId = eventsResponse[0].id;
-        const response = await apiClient.post<TicketCalculationResponse>(`/api/pricing/calculate?event_id=${eventId}`, { 
+        const response = await apiClient.post<TicketCalculationResponse>(`/api/pricing/calculate?event_id=${eventId}&payment_mode=${paymentMode}`, { 
           quantity, 
           food_option: foodOption 
         });
@@ -63,7 +65,13 @@ const Registration: React.FC = () => {
     } else if (field === 'ticket_quantity') {
       processedValue = Number(value);
       // Calculate price when quantity changes
-      calculatePrice(processedValue as number, formData.food_option);
+      calculatePrice(processedValue as number, formData.food_option, formData.payment_mode);
+    } else if (field === 'payment_mode') {
+      // Calculate price when payment mode changes
+      calculatePrice(formData.ticket_quantity, formData.food_option, value as 'cash' | 'zelle');
+    } else if (field === 'food_option') {
+      // Calculate price when food option changes
+      calculatePrice(formData.ticket_quantity, value as 'with_food' | 'without_food', formData.payment_mode);
     }
     
     setFormData(prev => ({
@@ -80,10 +88,45 @@ const Registration: React.FC = () => {
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setTransactionScreenshot(file);
+      setUploadStatus('idle');
+    }
+  };
+
+  const uploadTransactionScreenshot = async (attendeeId: string): Promise<string | null> => {
+    if (!transactionScreenshot) return null;
+    
+    setUploadStatus('uploading');
+    try {
+      const formData = new FormData();
+      formData.append('file', transactionScreenshot);
+      formData.append('attendee_id', attendeeId);
+      
+      const response = await apiClient.post<{file_url: string}>('/api/upload-transaction-screenshot', formData);
+      
+      setUploadStatus('success');
+      return response.file_url;
+    } catch (error) {
+      console.error('Failed to upload screenshot:', error);
+      setUploadStatus('error');
+      return null;
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setStatus(ApiStatus.LOADING);
     setErrors({});
+
+    // Validate Zelle payment requires screenshot
+    if (formData.payment_mode === 'zelle' && !transactionScreenshot) {
+      setErrors({ payment_mode: 'Transaction screenshot is required for Zelle payments' });
+      setStatus(ApiStatus.IDLE);
+      return;
+    }
 
     // Validate form
     const formDataRecord: Record<string, string> = {
@@ -101,7 +144,19 @@ const Registration: React.FC = () => {
     }
 
     try {
+      // First, register the attendee
       const response = await apiClient.post<AttendeeResponse>('/api/register', formData);
+      
+      // Then upload transaction screenshot if Zelle payment
+      if (formData.payment_mode === 'zelle' && transactionScreenshot) {
+        const screenshotUrl = await uploadTransactionScreenshot(response.id);
+        if (!screenshotUrl) {
+          setErrors({ general: 'Registration successful but failed to upload transaction screenshot. Please contact support.' });
+          setStatus(ApiStatus.ERROR);
+          return;
+        }
+      }
+      
       setSuccessData(response);
       setStatus(ApiStatus.SUCCESS);
       
@@ -111,6 +166,8 @@ const Registration: React.FC = () => {
       // Reset form
       setFormData({ name: '', email: '', phone: '', ticket_quantity: 1, payment_mode: 'cash', food_option: 'with_food' });
       setSelectedPricing(null);
+      setTransactionScreenshot(null);
+      setUploadStatus('idle');
     } catch (error: any) {
       console.error('Registration error:', error);
       setStatus(ApiStatus.ERROR);
@@ -311,14 +368,88 @@ const Registration: React.FC = () => {
               <select
                 id="payment_mode"
                 value={formData.payment_mode}
-                onChange={(e) => setFormData(prev => ({ ...prev, payment_mode: e.target.value as 'cash' | 'zelle' }))}
+                onChange={(e) => handleInputChange('payment_mode', e.target.value)}
                 className="w-full px-3 py-2 sm:py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-gray-900 text-sm sm:text-base"
                 disabled={status === ApiStatus.LOADING}
               >
                 <option value="cash" className="bg-white text-gray-900">Cash</option>
-                <option value="zelle" className="bg-white text-gray-900" disabled>Zelle (Coming Soon)</option>
+                <option value="zelle" className="bg-white text-gray-900">Zelle (+$1.00 per ticket)</option>
               </select>
             </div>
+
+            {/* Zelle QR Code Display */}
+            {formData.payment_mode === 'zelle' && (
+              <div className="bg-white/5 backdrop-blur-sm border border-white/20 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Zelle Payment Instructions</h3>
+                <div className="text-center">
+                  <p className="text-sm text-gray-700 mb-4">
+                    Scan the QR code below to access the Zelle payment link:
+                  </p>
+                  <div className="flex justify-center mb-4">
+                    <img 
+                      src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/sign/Zelle%20QR/Zelle%20QR.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kNTU2NDk5My05MGEwLTQ5ZTEtODc3Yi1iZTM5YWFhZWRlNzkiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJaZWxsZSBRUi9aZWxsZSBRUi5wbmciLCJpYXQiOjE3NTg1MTgxMjQsImV4cCI6MTc5MDA1NDEyNH0.tHHK7GVXNntYByRdubcL2HZqdiq-ReMxDGcYNQOw7-4"
+                      alt="Zelle Payment QR Code"
+                      className="w-48 h-48 border border-white/30 rounded-lg"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-4">
+                    After completing the payment, take a screenshot of the transaction confirmation and upload it below.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Transaction Screenshot Upload for Zelle */}
+            {formData.payment_mode === 'zelle' && (
+              <div>
+                <label htmlFor="transaction_screenshot" className="block text-sm font-medium text-gray-900 mb-2">
+                  Transaction Screenshot *
+                </label>
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    id="transaction_screenshot"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-gray-900 text-sm"
+                    disabled={status === ApiStatus.LOADING}
+                  />
+                  {transactionScreenshot && (
+                    <div className="flex items-center space-x-2 text-sm text-green-300">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>File selected: {transactionScreenshot.name}</span>
+                    </div>
+                  )}
+                  {uploadStatus === 'uploading' && (
+                    <div className="flex items-center space-x-2 text-sm text-blue-300">
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Uploading...</span>
+                    </div>
+                  )}
+                  {uploadStatus === 'success' && (
+                    <div className="flex items-center space-x-2 text-sm text-green-300">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>Screenshot uploaded successfully!</span>
+                    </div>
+                  )}
+                  {uploadStatus === 'error' && (
+                    <div className="flex items-center space-x-2 text-sm text-red-300">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <span>Upload failed. Please try again.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-2">
@@ -367,6 +498,9 @@ const Registration: React.FC = () => {
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">Total Price</h3>
                     <p className="text-xs text-gray-700">{selectedPricing.quantity} {selectedPricing.quantity === 1 ? 'ticket' : 'tickets'}</p>
+                    {formData.payment_mode === 'zelle' && (
+                      <p className="text-xs text-blue-300">Zelle (+$1.00 per ticket)</p>
+                    )}
                   </div>
                   <div className="text-2xl font-bold text-gray-900">${selectedPricing.total_price.toFixed(2)}</div>
                 </div>
@@ -395,6 +529,11 @@ const Registration: React.FC = () => {
                 'Register for Event'
               )}
             </button>
+            {(errors.general || errors.payment_mode) && (
+              <p className="mt-3 text-sm text-red-300 text-center">
+                {errors.general || errors.payment_mode}
+              </p>
+            )}
           </form>
         </div>
       </div>

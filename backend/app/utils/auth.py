@@ -113,6 +113,22 @@ async def get_current_volunteer_or_president(current_user: TokenData = Depends(g
     return current_user
 
 
+async def get_current_volunteer_president_or_finance_director(
+    current_user: TokenData = Depends(get_current_user)
+) -> TokenData:
+    """Ensure current user is a volunteer, president, or finance director."""
+    if current_user.role not in [
+        UserRole.VOLUNTEER,
+        UserRole.PRESIDENT,
+        UserRole.FINANCE_DIRECTOR,
+    ]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only volunteers, presidents, or finance directors can access this resource"
+        )
+    return current_user
+
+
 async def get_current_finance_director(current_user: TokenData = Depends(get_current_user)) -> TokenData:
     """Ensure current user is a finance director."""
     if current_user.role != UserRole.FINANCE_DIRECTOR:

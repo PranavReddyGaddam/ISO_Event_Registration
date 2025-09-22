@@ -57,7 +57,8 @@ async def get_pricing_tiers(event_id: str):
 @router.post("/calculate", response_model=TicketCalculationResponse)
 async def calculate_ticket_price(
     request: TicketCalculationRequest,
-    event_id: str
+    event_id: str,
+    payment_mode: str = "cash"
 ):
     """Calculate ticket price for a given quantity and food option."""
     try:
@@ -77,7 +78,14 @@ async def calculate_ticket_price(
         for tier_data in response.data:
             if (request.quantity >= tier_data["quantity_from"] and 
                 request.quantity <= tier_data["quantity_to"]):
-                price_per_ticket = float(tier_data["price_per_ticket"])
+                base_price = float(tier_data["price_per_ticket"])
+                
+                # Add $1 for Zelle payments
+                if payment_mode == "zelle":
+                    price_per_ticket = base_price + 1.00
+                else:
+                    price_per_ticket = base_price
+                
                 pricing_tier = TicketPricingTier(
                     quantity_from=tier_data["quantity_from"],
                     quantity_to=tier_data["quantity_to"],
