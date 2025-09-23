@@ -99,11 +99,13 @@ export const Navigation: React.FC = () => {
           <div className="md:hidden">
             <button
               onClick={toggleMobileMenu}
-              className="text-white hover:text-white/80 p-2 rounded-md transition-colors"
+              className="text-gray-800 hover:text-gray-900 p-2 rounded-md transition-colors"
               aria-label="Toggle mobile menu"
             >
               <svg
-                className="w-6 h-6"
+                className={`w-6 h-6 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                  isMobileMenuOpen ? 'rotate-90' : 'rotate-0'
+                }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -129,16 +131,28 @@ export const Navigation: React.FC = () => {
         </div>
 
         {/* Mobile Navigation Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-black/20 backdrop-blur-sm rounded-lg border border-white/10">
+          <div
+            className={`md:hidden overflow-hidden will-change-[max-height,opacity,transform] transition-all ${
+              isMobileMenuOpen
+                ? 'duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-h-[90vh] opacity-100 translate-y-0'
+                : 'duration-400 ease-[cubic-bezier(0.4,0,1,1)] max-h-0 opacity-0 -translate-y-2 pointer-events-none'
+            }`}
+            aria-hidden={!isMobileMenuOpen}
+          >
+            <div
+              className={`px-2 pt-2 pb-3 space-y-1 bg-white/80 backdrop-blur-sm text-gray-900 rounded-lg border border-white/20 shadow-xl transition-all ${
+                isMobileMenuOpen
+                  ? 'duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] opacity-100 scale-100'
+                  : 'duration-400 ease-[cubic-bezier(0.4,0,1,1)] opacity-0 scale-95'
+              }`}
+            >
               <Link
                 to="/registration"
                 onClick={closeMobileMenu}
                 className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                   isActivePath('/registration')
-                    ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                 }`}
               >
                 Registration
@@ -150,10 +164,10 @@ export const Navigation: React.FC = () => {
                     <Link
                       to="/checkin"
                       onClick={closeMobileMenu}
-                      className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                         isActivePath('/checkin')
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                       }`}
                     >
                       Check-in
@@ -167,8 +181,8 @@ export const Navigation: React.FC = () => {
                         onClick={closeMobileMenu}
                         className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                           isActivePath('/dashboard')
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                         }`}
                       >
                         Dashboard
@@ -178,8 +192,8 @@ export const Navigation: React.FC = () => {
                         onClick={closeMobileMenu}
                         className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                           isActivePath('/uploads')
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                         }`}
                       >
                         Uploads
@@ -192,16 +206,16 @@ export const Navigation: React.FC = () => {
                     onClick={closeMobileMenu}
                     className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                       isActivePath('/profile')
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                        : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                     }`}
                   >
                     Profile
                   </Link>
 
-                  <div className="border-t border-white/10 pt-3 mt-3">
+                  <div className="border-t border-white/30 pt-3 mt-3">
                     <div className="px-3 py-2">
-                      <p className="text-sm text-white/70">
+                      <p className="text-sm text-gray-700">
                         {currentUser?.full_name} ({currentUser?.role})
                       </p>
                     </div>
@@ -210,7 +224,7 @@ export const Navigation: React.FC = () => {
                         logout();
                         closeMobileMenu();
                       }}
-                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-300 hover:text-red-200 hover:bg-red-500/10 transition-colors"
+                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
                     >
                       Logout
                     </button>
@@ -222,8 +236,8 @@ export const Navigation: React.FC = () => {
                   onClick={closeMobileMenu}
                   className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
                     isActivePath('/login')
-                      ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
                   }`}
                 >
                   Admin Login
@@ -231,7 +245,7 @@ export const Navigation: React.FC = () => {
               )}
             </div>
           </div>
-        )}
+        
       </div>
     </nav>
   );
