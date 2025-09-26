@@ -46,6 +46,8 @@ const Dashboard: React.FC = () => {
   const [showEventManager, setShowEventManager] = useState(false);
   const [hideKpiValues, setHideKpiValues] = useState(false);
   const [volunteerSummary, setVolunteerSummary] = useState<any[] | null>(null);
+  const [ticketsWithFood, setTicketsWithFood] = useState<number | null>(null);
+  const [ticketsWithoutFood, setTicketsWithoutFood] = useState<number | null>(null);
   const [attendeesPagination, setAttendeesPagination] =
     useState<PaginationMeta | null>(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState<any | null>(null);
@@ -107,6 +109,35 @@ const Dashboard: React.FC = () => {
       setAttendees(attendeesData.data);
       setAttendeesPagination(attendeesData.pagination);
       setVolunteerSummary(volunteersData);
+
+      // Compute ticket breakdown by food option for KPI subtext
+      try {
+        const [withFoodResp, withoutFoodResp] = await Promise.all([
+          apiClient.get<PaginatedResponse<AttendeeResponse>>("/api/attendees", {
+            food_option: "with_food",
+            limit: 10000,
+            offset: 0,
+          }),
+          apiClient.get<PaginatedResponse<AttendeeResponse>>("/api/attendees", {
+            food_option: "without_food",
+            limit: 10000,
+            offset: 0,
+          }),
+        ]);
+
+        const sumTickets = (items: AttendeeResponse[]) =>
+          items.reduce(
+            (sum, a) => sum + (Number((a as any).total_tickets_per_person) || Number((a as any).ticket_quantity) || 0),
+            0
+          );
+
+        setTicketsWithFood(sumTickets(withFoodResp.data));
+        setTicketsWithoutFood(sumTickets(withoutFoodResp.data));
+      } catch (e) {
+        // Non-fatal; keep nulls
+        setTicketsWithFood(null);
+        setTicketsWithoutFood(null);
+      }
       setStatus(ApiStatus.SUCCESS);
     } catch (error: any) {
       console.error("Dashboard data loading error:", error);
@@ -369,7 +400,12 @@ const Dashboard: React.FC = () => {
                 </button>
               </div>
             </div>
-            <FinancialStatsCards stats={stats} hideValues={hideKpiValues} />
+            <FinancialStatsCards
+              stats={stats}
+              hideValues={hideKpiValues}
+              ticketsWithFood={ticketsWithFood ?? undefined}
+              ticketsWithoutFood={ticketsWithoutFood ?? undefined}
+            />
           </div>
         )}
 
@@ -477,12 +513,16 @@ const Dashboard: React.FC = () => {
 interface StatsCardsProps {
   stats: EventStats;
   hideValues?: boolean;
+  ticketsWithFood?: number;
+  ticketsWithoutFood?: number;
 }
 
 // Financial Stats Cards (President + Finance Director)
 const FinancialStatsCards: React.FC<StatsCardsProps> = ({
   stats,
   hideValues = false,
+  ticketsWithFood,
+  ticketsWithoutFood,
 }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-6">
@@ -510,6 +550,26 @@ const FinancialStatsCards: React.FC<StatsCardsProps> = ({
             <dd className="text-3xl font-bold text-gray-900">
               {hideValues ? "***" : stats.total_registered}
             </dd>
+            {(ticketsWithFood !== undefined || ticketsWithoutFood !== undefined) && (
+              <dd className="mt-2">
+                {hideValues ? (
+                  <span className="text-sm text-gray-500">***</span>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {typeof ticketsWithFood === "number" && (
+                      <span className="inline-flex w-fit items-center rounded-md bg-orange-100 text-orange-800 px-2 py-0.5 text-[11px] leading-4 font-medium shadow-sm">
+                        {ticketsWithFood.toLocaleString()} With Food
+                      </span>
+                    )}
+                    {typeof ticketsWithoutFood === "number" && (
+                      <span className="inline-flex w-fit items-center rounded-md bg-purple-100 text-purple-800 px-2 py-0.5 text-[11px] leading-4 font-medium shadow-sm">
+                        {ticketsWithoutFood.toLocaleString()} Without Food
+                      </span>
+                    )}
+                  </div>
+                )}
+              </dd>
+            )}
           </dl>
         </div>
       </div>

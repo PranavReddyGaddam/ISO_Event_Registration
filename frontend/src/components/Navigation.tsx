@@ -135,7 +135,7 @@ export const Navigation: React.FC = () => {
             className={`md:hidden overflow-hidden will-change-[max-height,opacity,transform] transition-all ${
               isMobileMenuOpen
                 ? 'duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)] max-h-[90vh] opacity-100 translate-y-0'
-                : 'duration-400 ease-[cubic-bezier(0.4,0,1,1)] max-h-0 opacity-0 -translate-y-2 pointer-events-none'
+                : 'duration-[550ms] ease-[cubic-bezier(0.4,0,1,1)] max-h-0 opacity-0 -translate-y-2 pointer-events-none'
             }`}
             aria-hidden={!isMobileMenuOpen}
           >
@@ -143,7 +143,7 @@ export const Navigation: React.FC = () => {
               className={`px-2 pt-2 pb-3 space-y-1 bg-white/80 backdrop-blur-sm text-gray-900 rounded-lg border border-white/20 shadow-xl transition-all ${
                 isMobileMenuOpen
                   ? 'duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] opacity-100 scale-100'
-                  : 'duration-400 ease-[cubic-bezier(0.4,0,1,1)] opacity-0 scale-95'
+                  : 'duration-[500ms] ease-[cubic-bezier(0.4,0,1,1)] opacity-0 scale-95'
               }`}
             >
               <Link
