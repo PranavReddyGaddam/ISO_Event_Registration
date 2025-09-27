@@ -813,7 +813,7 @@ async def register_attendee(
                 # Prepare attendee record for this ticket
                 attendee_data = {
                     "name": attendee.name,
-                    "email": attendee.email,
+                    "email": attendee.email.lower().strip(),  # Normalize email to lowercase
                     "phone": attendee.phone,
                     "payment_mode": attendee.payment_mode,
                     "food_option": attendee.food_option,
@@ -1013,6 +1013,8 @@ async def get_attendees(
     food_option: str = None,
     limit: int = 50,
     offset: int = 0,
+    sort_by: str = None,
+    sort_dir: str = "desc",
     current_user: TokenData = Depends(get_current_dashboard_user)
 ):
     """Get list of attendees with optional filters and pagination."""
@@ -1022,7 +1024,9 @@ async def get_attendees(
             search=search,
             food_option=food_option,
             limit=limit,
-            offset=offset
+            offset=offset,
+            sort_by=sort_by,
+            sort_dir=sort_dir
         )
         
         # Calculate pagination metadata

@@ -176,7 +176,9 @@ class SupabaseClient:
         search: Optional[str] = None,
         food_option: Optional[str] = None,
         limit: int = 100,
-        offset: int = 0
+        offset: int = 0,
+        sort_by: Optional[str] = None,
+        sort_dir: str = "desc"
     ) -> tuple[List[Dict[str, Any]], int]:
         """Get attendees with optional filters and total count."""
         try:
@@ -211,8 +213,24 @@ class SupabaseClient:
                 # Group attendees by person and calculate totals
                 grouped_results = self._group_attendees_by_person(all_results)
                 
-                # Sort by total tickets desc (most tickets first)
-                grouped_results.sort(key=lambda x: x.get("total_tickets_per_person", 0), reverse=True)
+                # Sort server-side based on requested column
+                reverse = (str(sort_dir).lower() != "asc")
+                key = (sort_by or "created_at").lower()
+                def sort_key(item: Dict[str, Any]):
+                    if key in ("created_at", "registered_at"):
+                        return str(item.get("created_at") or "")
+                    if key == "total_tickets_per_person":
+                        return int(item.get("total_tickets_per_person", 0))
+                    if key == "total_registrations":
+                        return int(item.get("total_registrations", 0))
+                    if key == "current_tickets":
+                        return int(item.get("current_tickets", 0))
+                    if key == "name":
+                        return str(item.get("name", "")).lower()
+                    if key == "email":
+                        return str(item.get("email", "")).lower()
+                    return str(item.get("created_at") or "")
+                grouped_results.sort(key=sort_key, reverse=reverse)
                 total_count = len(grouped_results)
                 paginated_results = grouped_results[offset:offset + limit]
                 
@@ -235,8 +253,24 @@ class SupabaseClient:
             # Group attendees by person and calculate totals
             grouped_attendees = self._group_attendees_by_person(attendees)
             
-            # Sort by total tickets desc (most tickets first)
-            grouped_attendees.sort(key=lambda x: x.get("total_tickets_per_person", 0), reverse=True)
+            # Sort server-side based on requested column
+            reverse = (str(sort_dir).lower() != "asc")
+            key = (sort_by or "created_at").lower()
+            def sort_key(item: Dict[str, Any]):
+                if key in ("created_at", "registered_at"):
+                    return str(item.get("created_at") or "")
+                if key == "total_tickets_per_person":
+                    return int(item.get("total_tickets_per_person", 0))
+                if key == "total_registrations":
+                    return int(item.get("total_registrations", 0))
+                if key == "current_tickets":
+                    return int(item.get("current_tickets", 0))
+                if key == "name":
+                    return str(item.get("name", "")).lower()
+                if key == "email":
+                    return str(item.get("email", "")).lower()
+                return str(item.get("created_at") or "")
+            grouped_attendees.sort(key=sort_key, reverse=reverse)
             
             # Apply pagination to grouped results
             total_count = len(grouped_attendees)
@@ -268,7 +302,9 @@ class SupabaseClient:
                     'with_food_count': 0,
                     'without_food_count': 0,
                     'checked_in_count': 0,
-                    'total_count': 0
+                    'total_count': 0,
+                    'latest_registration': None,
+                    'latest_created_at': None
                 }
             
             # Add attendee to group
@@ -298,6 +334,13 @@ class SupabaseClient:
             
             if is_checked_in:
                 person_groups[person_key]['checked_in_count'] += 1
+            
+            # Track the most recent registration
+            created_at = attendee.get('created_at', '')
+            if (person_groups[person_key]['latest_created_at'] is None or 
+                created_at > person_groups[person_key]['latest_created_at']):
+                person_groups[person_key]['latest_created_at'] = created_at
+                person_groups[person_key]['latest_registration'] = attendee
         
         # Convert to list of grouped attendees
         grouped_attendees = []
@@ -306,9 +349,13 @@ class SupabaseClient:
             base_attendee = group_data['attendees'][0].copy()
             
             # Add calculated fields
+            latest_registration = group_data['latest_registration']
+            current_tickets = latest_registration.get('ticket_quantity', 0) if latest_registration else 0
+            
             base_attendee.update({
                 'total_tickets_per_person': group_data['total_tickets'],
                 'total_registrations': group_data['total_count'],
+                'current_tickets': current_tickets,  # Tickets from most recent registration
                 'total_cash_amount': group_data['total_cash'],
                 'total_zelle_amount': group_data['total_zelle'],
                 'cash_registrations': group_data['cash_count'],
@@ -331,7 +378,8 @@ class SupabaseClient:
     ) -> tuple[List[Dict[str, Any]], int]:
         """Get all individual registrations for a specific email address."""
         try:
-            query = self.client.table("attendees").select("*", count="exact").eq("email", email)
+            # Use case-insensitive email matching
+            query = self.client.table("attendees").select("*", count="exact").ilike("email", email)
             
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             attendees = response.data or []

@@ -26,6 +26,7 @@ export interface Attendee {
   // Grouped view fields (optional - only present in grouped responses)
   total_tickets_per_person?: number;
   total_registrations?: number;
+  current_tickets?: number;
   total_cash_amount?: number;
   total_zelle_amount?: number;
   cash_registrations?: number;

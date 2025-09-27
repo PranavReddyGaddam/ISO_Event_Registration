@@ -100,7 +100,12 @@ const Dashboard: React.FC = () => {
         apiClient.get<EventStats>("/api/stats"),
         apiClient.get<PaginatedResponse<AttendeeResponse>>(
           "/api/attendees",
-          cleanFilter
+          {
+            ...cleanFilter,
+            // send current sort settings to backend for whole-list sorting
+            sort_by: (sortBy as string) || "created_at",
+            sort_dir: sortDir,
+          }
         ),
         apiClient.get<any[]>("/api/volunteers/summary"),
       ]);

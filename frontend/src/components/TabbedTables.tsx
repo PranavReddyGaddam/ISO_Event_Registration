@@ -896,7 +896,6 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Email" column="email"/></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sold By</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Tickets" column="total_tickets_per_person"/></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"><SortBtn label="Total Registrations" column="total_registrations"/></th>
                     {showFinancialData && (
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Summary</th>
                     )}
@@ -940,9 +939,6 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
                           {attendee.total_tickets_per_person || attendee.ticket_quantity}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {attendee.total_registrations || 1}
                         </td>
                         {showFinancialData && (
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
