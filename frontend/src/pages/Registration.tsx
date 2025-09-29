@@ -414,7 +414,7 @@ const Registration: React.FC = () => {
                   </p>
                   <div className="flex justify-center mb-4">
                     <img 
-                      src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/sign/Zelle%20QR/Zelle%20QR.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kNTU2NDk5My05MGEwLTQ5ZTEtODc3Yi1iZTM5YWFhZWRlNzkiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJaZWxsZSBRUi9aZWxsZSBRUi5wbmciLCJpYXQiOjE3NTg1MTgxMjQsImV4cCI6MTc5MDA1NDEyNH0.tHHK7GVXNntYByRdubcL2HZqdiq-ReMxDGcYNQOw7-4"
+                      src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/sign/Zelle%20QR/Zelle%20QR%20Code.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kNTU2NDk5My05MGEwLTQ5ZTEtODc3Yi1iZTM5YWFhZWRlNzkiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJaZWxsZSBRUi9aZWxsZSBRUiBDb2RlLnBuZyIsImlhdCI6MTc1OTE4ODkzNCwiZXhwIjoxNzkwNzI0OTM0fQ.LLVpyOeFMIbO799nTLtdCYYpY-YDbGlC41cIZoYOxbA"
                       alt="Zelle Payment QR Code"
                       className="w-48 h-48 border border-white/30 rounded-lg"
                     />

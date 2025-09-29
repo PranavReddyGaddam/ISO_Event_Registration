@@ -128,7 +128,9 @@ const Footer: React.FC = () => (
           &copy; 2025 Volunteer Event Check-in System. Built with React,
           FastAPI, TypeScript, and Tailwind CSS.
         </p>
-        
+        <p className="mt-1">
+          Made by <a href="https://github.com/PranavReddyGaddam/" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">Pranav Reddy Gaddam</a>
+        </p>
       </div>
     </div>
   </footer>
