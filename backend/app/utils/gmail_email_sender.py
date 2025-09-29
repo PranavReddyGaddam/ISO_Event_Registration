@@ -196,6 +196,159 @@ class GmailEmailSender:
             logger.error(f"Error sending volunteer rejection email: {e}")
             return False
     
+    async def send_guest_invitation_email(
+        self,
+        email: str,
+        name: str,
+        qr_code_url: str,
+        qr_code_id: str,
+    ) -> bool:
+        """Send VIP-style guest invitation email."""
+        try:
+            event_details = await self.get_current_event_details()
+            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
+            html_content = self.create_guest_invitation_email_content(
+                name=name,
+                qr_code_url=qr_code_url,
+                qr_code_id=qr_code_id,
+                event_details=event_details,
+            )
+            return await self._send_email(email, subject, html_content)
+        except Exception as e:
+            logger.error(f"Error sending guest invitation email: {e}")
+            return False
+
+    async def send_guest_invitation_email_with_pdf(
+        self,
+        email: str,
+        name: str,
+        qr_codes_data: list,
+        pdf_buffer: bytes,
+    ) -> bool:
+        """Send VIP-style guest invitation email with PDF attachment."""
+        try:
+            event_details = await self.get_current_event_details()
+            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
+            
+            # Create email content without QR code (since it's in PDF)
+            html_content = self.create_guest_invitation_email_content_without_qr(
+                name=name,
+                event_details=event_details,
+            )
+            
+            # Send email with PDF attachment using the correct method name
+            return await self._send_email_with_attachment(
+                to_email=email,
+                subject=subject,
+                html_content=html_content,
+                attachment_bytes=pdf_buffer,
+                attachment_filename=f"VIP_Tickets_{name.replace(' ', '_')}.pdf"
+            )
+        except Exception as e:
+            logger.error(f"Error sending guest invitation email with PDF: {e}")
+            return False
+
+    def create_guest_invitation_email_content_without_qr(
+        self,
+        name: str,
+        event_details: Optional[dict] = None,
+    ) -> str:
+        """Create VIP-style guest invitation email content without QR code (for PDF attachment)."""
+        if event_details is None:
+            event_details = {
+                "name": settings.event_name,
+                "date": settings.event_date,
+                "location": "TBD",
+            }
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset=\"utf-8\">
+            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+            <title>VIP Invitation to {event_details['name']}</title>
+            <style>
+                body {{ font-family: 'Georgia', serif; line-height: 1.6; color: #2c3e50; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+                .container {{ max-width: 600px; margin: 20px auto; padding: 0; background: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }}
+                .header {{ background: #f8f9fa; padding: 0; text-align: center; }}
+                .header img {{ display: block; width: 100%; max-width: 600px; height: auto; border: 0; outline: none; text-decoration: none; }}
+                .header h1 {{ margin: 20px 0 10px 0; font-size: 28px; color: #2c3e50; }}
+                .header .subtitle {{ margin: 0 0 20px 0; font-size: 16px; color: #6c757d; }}
+                .content {{ padding: 40px 30px; background: #ffffff; }}
+                .greeting {{ font-size: 24px; color: #2c3e50; margin-bottom: 20px; text-align: center; font-weight: bold; }}
+                .invitation-text {{ font-size: 16px; color: #34495e; margin-bottom: 30px; text-align: center; line-height: 1.8; }}
+                .ticket-info {{ text-align: center; margin: 40px 0; padding: 30px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; border: 3px solid #ffd700; }}
+                .ticket-info h3 {{ margin: 0 0 20px 0; color: #2c3e50; }}
+                .ticket-info p {{ margin: 10px 0; color: #6c757d; font-size: 14px; }}
+                .vip-info {{ background: #f8f9fa; padding: 25px; margin: 30px 0; border-radius: 15px; border: 2px solid #dee2e6; }}
+                .vip-info h3 {{ margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; text-align: center; }}
+                .vip-info ul {{ margin: 0; padding-left: 20px; color: #2c3e50; }}
+                .vip-info li {{ margin-bottom: 8px; font-size: 15px; }}
+                .footer {{ background: #2c3e50; color: #ffffff; padding: 30px; text-align: center; }}
+                .footer p {{ margin: 5px 0; font-size: 14px; }}
+                .footer .signature {{ font-style: italic; margin-top: 20px; color: #6c757d; }}
+                .star {{ color: #495057; font-size: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class=\"container\">
+                <div class=\"header\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                    <h1>🌟 VIP INVITATION 🌟</h1>
+                    <p class=\"subtitle\">Exclusive Access to {event_details['name']}</p>
+                </div>
+                <div class=\"content\">
+                    <div class=\"greeting\">Dear {name},</div>
+                    <div class=\"invitation-text\">
+                        <p>It is our absolute pleasure to extend a <strong>VIP invitation</strong> to you for our exclusive event!</p>
+                        <p>You have been personally selected to join us as our distinguished guest for what promises to be an unforgettable evening.</p>
+                    </div>
+                    
+                    <div class=\"ticket-info\">
+                        <h3>🎫 Your VIP Tickets</h3>
+                        <p>Your exclusive VIP tickets are attached to this email as a PDF document.</p>
+                        <p>Please save the PDF to your phone or print it for easy access at the event.</p>
+                    </div>
+                    
+                    
+                    
+                    <div style=\"text-align: center; margin: 30px 0; padding: 20px; background: #e8f4fd; border-radius: 10px; border: 2px solid #3498db;\">
+                        <h4 style=\"margin: 0 0 10px 0; color: #2c3e50;\">Important Instructions</h4>
+                        <p style=\"margin: 5px 0; color: #34495e;\">• Save the attached PDF to your phone or print it</p>
+                        <p style=\"margin: 5px 0; color: #34495e;\">• Present your QR code at the VIP entrance</p>
+                        <p style=\"margin: 5px 0; color: #34495e;\">• Contact us immediately if you have any questions</p>
+                    </div>
+                    
+                    <div style=\"background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 30px 0;\">
+                        <h3 style=\"color: #374151; margin: 0 0 15px 0;\">Terms and Conditions:</h3>
+                        <ul style=\"font-size: 12px; line-height: 1.4; color: #6b7280; margin: 0; padding-left: 20px;\">
+                            <li>No exchange or refund. Unauthorized sale of tickets is prohibited.</li>
+                            <li>ISO reserves the right of admission and entry.</li>
+                            <li>Consumption and possession of alcohol and narcotics are strictly prohibited.</li>
+                            <li>Everyone must present the QR code received in their email at the time of the event to receive their wristbands.</li>
+                            <li>Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.</li>
+                            <li>By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.</li>
+                            <li>ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.</li>
+                            <li>Ticket categories are final and cannot be changed or upgraded after purchase.</li>
+                            <li>Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.</li>
+                            <li>ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.</li>
+                            <li>Terms and conditions are subject to change at the discretion of ISO.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class=\"footer\">
+                    <p>We are thrilled to welcome you as our distinguished guest.</p>
+                    <p>Your presence will make this event truly special.</p>
+                    <div class=\"signature\">
+                        <p>Warm regards,<br>The Event Organizing Team</p>
+                    </div>
+                    <p style=\"font-size: 12px; margin-top: 20px; opacity: 0.8;\"><em>This is a VIP invitation. Please do not reply to this email.</em></p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    
     async def send_registration_email_with_pdf(
         self,
         email: str,
@@ -606,6 +759,121 @@ class GmailEmailSender:
                         <p>Thank you for your understanding and continued support.</p>
                         <p><em>This is an automated message. Please do not reply to this email.</em></p>
                     </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+    
+    def create_guest_invitation_email_content(
+        self,
+        name: str,
+        qr_code_url: str,
+        qr_code_id: str,
+        event_details: Dict[str, str] = None,
+    ) -> str:
+        """Create VIP-style guest invitation email content."""
+        if event_details is None:
+            event_details = {
+                "name": settings.event_name,
+                "date": settings.event_date,
+                "location": "TBD",
+            }
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset=\"utf-8\">
+            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+            <title>VIP Invitation to {event_details['name']}</title>
+            <style>
+                body {{ font-family: 'Georgia', serif; line-height: 1.6; color: #2c3e50; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+                .container {{ max-width: 600px; margin: 20px auto; padding: 0; background: #ffffff; border-radius: 15px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }}
+                .header {{ background: #f8f9fa; padding: 0; text-align: center; }}
+                .header img {{ display: block; width: 100%; max-width: 600px; height: auto; border: 0; outline: none; text-decoration: none; }}
+                .header h1 {{ margin: 20px 0 10px 0; font-size: 28px; color: #2c3e50; }}
+                .header .subtitle {{ margin: 0 0 20px 0; font-size: 16px; color: #6c757d; }}
+                .content {{ padding: 40px 30px; background: #ffffff; }}
+                .greeting {{ font-size: 24px; color: #2c3e50; margin-bottom: 20px; text-align: center; font-weight: bold; }}
+                .invitation-text {{ font-size: 16px; color: #34495e; margin-bottom: 30px; text-align: center; line-height: 1.8; }}
+                .qr-code {{ text-align: center; margin: 40px 0; padding: 30px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 15px; border: 3px solid #dee2e6; }}
+                .qr-code img {{ max-width: 200px; height: auto; border: 3px solid #ffffff; border-radius: 10px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }}
+                .qr-code p {{ margin: 15px 0 0 0; font-size: 12px; color: #6c757d; font-family: 'Courier New', monospace; }}
+                .vip-info {{ background: #f8f9fa; padding: 25px; margin: 30px 0; border-radius: 15px; border: 2px solid #dee2e6; }}
+                .vip-info h3 {{ margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; text-align: center; }}
+                .vip-info ul {{ margin: 0; padding-left: 20px; color: #2c3e50; }}
+                .vip-info li {{ margin-bottom: 8px; font-size: 15px; }}
+                .event-details {{ background: #f8f9fa; padding: 25px; margin: 30px 0; border-radius: 15px; border-left: 5px solid #ffd700; }}
+                .event-details h4 {{ margin: 0 0 15px 0; color: #2c3e50; font-size: 18px; }}
+                .event-details p {{ margin: 5px 0; color: #495057; font-size: 15px; }}
+                .footer {{ background: #2c3e50; color: #ffffff; padding: 30px; text-align: center; }}
+                .footer p {{ margin: 5px 0; font-size: 14px; }}
+                .footer .signature {{ font-style: italic; margin-top: 20px; color: #6c757d; }}
+                .star {{ color: #495057; font-size: 20px; }}
+            </style>
+        </head>
+        <body>
+            <div class=\"container\">
+                <div class=\"header\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                    <h1>🌟 VIP INVITATION 🌟</h1>
+                    <p class=\"subtitle\">Exclusive Access to {event_details['name']}</p>
+                </div>
+                <div class=\"content\">
+                    <div class=\"greeting\">Dear {name},</div>
+                    <div class=\"invitation-text\">
+                        <p>It is our absolute pleasure to extend a <strong>VIP invitation</strong> to you for our exclusive event!</p>
+                        <p>You have been personally selected to join us as our distinguished guest for what promises to be an unforgettable evening.</p>
+                    </div>
+                    
+                    <div class=\"qr-code\">
+                        <h3 style=\"margin: 0 0 20px 0; color: #2c3e50;\">Your Exclusive Access Pass</h3>
+                        <img src=\"{qr_code_url}\" alt=\"VIP QR Code\" />
+                        <p>{qr_code_id}</p>
+                    </div>
+                    
+                    <div class=\"vip-info\">
+                        <h3>🎉 VIP Privileges Include:</h3>
+                        <ul>
+                            <li><span class=\"star\">★</span> Priority entry and check-in</li>
+                            <li><span class=\"star\">★</span> Special welcome reception</li>
+                            <li><span class=\"star\">★</span> Complimentary event access</li>
+                            <li><span class=\"star\">★</span> Exclusive networking opportunities</li>
+                            <li><span class=\"star\">★</span> Premium seating arrangements</li>
+                        </ul>
+                    </div>
+                    
+                        <div style=\"text-align: center; margin: 30px 0; padding: 20px; background: #e8f4fd; border-radius: 10px; border: 2px solid #3498db;\">
+                            <h4 style=\"margin: 0 0 10px 0; color: #2c3e50;\">Important Instructions</h4>
+                            <p style=\"margin: 5px 0; color: #34495e;\">• Save this QR code to your phone or print this email</p>
+                            <p style=\"margin: 5px 0; color: #34495e;\">• Present your QR code at the VIP entrance</p>
+                            <p style=\"margin: 5px 0; color: #34495e;\">• Contact us immediately if you have any questions</p>
+                        </div>
+                        
+                        <div style=\"background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 30px 0;\">
+                            <h3 style=\"color: #374151; margin: 0 0 15px 0;\">Terms and Conditions:</h3>
+                            <ul style=\"font-size: 12px; line-height: 1.4; color: #6b7280; margin: 0; padding-left: 20px;\">
+                                <li>No exchange or refund. Unauthorized sale of tickets is prohibited.</li>
+                                <li>ISO reserves the right of admission and entry.</li>
+                                <li>Consumption and possession of alcohol and narcotics are strictly prohibited.</li>
+                                <li>Everyone must present the QR code received in their email at the time of the event to receive their wristbands.</li>
+                                <li>Ticket holders voluntarily assume all risks in attending the event and release ISO-SJSU from all related claims.</li>
+                                <li>By entering the venue, attendees consent to photography, video recording, and their use in promotional materials by ISO.</li>
+                                <li>ISO-SJSU is not responsible for any food-related issues, including allergies, dietary restrictions, or adverse reactions to food. Attendees consume food and beverages at their own risk.</li>
+                                <li>Ticket categories are final and cannot be changed or upgraded after purchase.</li>
+                                <li>Weapons, sharp objects, outside food or drinks, professional cameras, drones, or any other dangerous items are strictly prohibited.</li>
+                                <li>ISO-SJSU is not responsible for any lost, stolen, or damaged personal belongings.</li>
+                                <li>Terms and conditions are subject to change at the discretion of ISO.</li>
+                            </ul>
+                        </div>
+                </div>
+                <div class=\"footer\">
+                    <p>We are thrilled to welcome you as our distinguished guest.</p>
+                    <p>Your presence will make this event truly special.</p>
+                    <div class=\"signature\">
+                        <p>Warm regards,<br>The Event Organizing Team</p>
+                    </div>
+                    <p style=\"font-size: 12px; margin-top: 20px; opacity: 0.8;\"><em>This is a VIP invitation. Please do not reply to this email.</em></p>
                 </div>
             </div>
         </body>

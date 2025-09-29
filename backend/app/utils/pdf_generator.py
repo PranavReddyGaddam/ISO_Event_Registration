@@ -7,7 +7,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib.colors import black, blue, darkblue
+from reportlab.lib.colors import black, blue, darkblue, gold, maroon, navy, darkred, purple, darkgray
 from typing import List, Dict, Any
 import logging
 
@@ -40,7 +40,7 @@ class PDFGenerator:
             fontSize=16,
             spaceAfter=20,
             alignment=TA_CENTER,
-            textColor=blue
+            textColor= blue
         )
         
         # Info style
@@ -200,6 +200,96 @@ class PDFGenerator:
             PDF bytes
         """
         return self.generate_qr_tickets_pdf([qr_data], event_name)
+
+    def generate_guest_tickets_pdf(self, qr_codes_data: List[Dict[str, Any]], event_name: str = "Volunteer Event 2024") -> bytes:
+        """Generate PDF for guest VIP tickets with special styling."""
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        
+        # Create story (content) for the PDF
+        story = []
+        
+        # Add VIP header
+        vip_title_style = ParagraphStyle(
+            'VIPTitle',
+            parent=self.styles['Heading1'],
+            fontSize=28,
+            spaceAfter=20,
+            alignment=TA_CENTER,
+            textColor=gold
+        )
+        
+        vip_subtitle_style = ParagraphStyle(
+            'VIPSubtitle',
+            parent=self.styles['Heading2'],
+            fontSize=18,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=darkgray
+        )
+        
+        story.append(Paragraph("VIP INVITATION", vip_title_style))
+        story.append(Paragraph(f"Exclusive Access to {event_name}", vip_subtitle_style))
+        story.append(Spacer(1, 20))
+        
+        # Add each guest ticket
+        for i, qr_data in enumerate(qr_codes_data):
+            if i > 0:
+                story.append(PageBreak())
+            
+                       
+            # QR Code
+            try:
+                qr_response = requests.get(qr_data['qr_code_url'], timeout=10)
+                if qr_response.status_code == 200:
+                    qr_image = Image(io.BytesIO(qr_response.content), width=2*inch, height=2*inch)
+                    story.append(qr_image)
+                    story.append(Spacer(1, 10))
+                else:
+                    logger.warning(f"Failed to fetch QR code image: {qr_response.status_code}")
+            except Exception as e:
+                logger.error(f"Error fetching QR code image: {e}")
+            
+            # QR Code ID
+            story.append(Paragraph(f"QR Code ID: {qr_data['qr_code_id']}", self.ticket_style))
+            story.append(Spacer(1, 20))
+            
+            # VIP Instructions
+            vip_instructions = [
+               "• Present this QR code at the entrance"
+           
+            ]
+            
+            for instruction in vip_instructions:
+                if instruction.startswith("🎫") or instruction.startswith("📋"):
+                    story.append(Paragraph(instruction, self.subtitle_style))
+                elif instruction == "":
+                    story.append(Spacer(1, 10))
+                else:
+                    story.append(Paragraph(instruction, self.info_style))
+            
+            story.append(Spacer(1, 20))
+            
+            # Terms and conditions (abbreviated for VIP)
+            terms_style = ParagraphStyle(
+                'Terms',
+                parent=self.styles['Normal'],
+                fontSize=8,
+                spaceAfter=5,
+                alignment=TA_LEFT,
+                textColor=black
+            )
+            
+            story.append(Paragraph("TERMS & CONDITIONS:", self.subtitle_style))
+            story.append(Paragraph("• No exchange or refund. Unauthorized sale prohibited.", terms_style))
+            story.append(Paragraph("• ISO reserves the right of admission and entry.", terms_style))
+            story.append(Paragraph("• Present QR code at event to receive wristbands.", terms_style))
+            story.append(Paragraph("• Terms subject to change at ISO's discretion.", terms_style))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
 
 
 # Global PDF generator instance

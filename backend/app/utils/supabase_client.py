@@ -60,6 +60,32 @@ class SupabaseClient:
             logger.error(f"Error creating attendee: {e}")
             raise
     
+    async def create_guest(self, guest_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new guest in the database."""
+        try:
+            # If no event_id provided, use the default event
+            if "event_id" not in guest_data:
+                default_event_id = await self.get_default_event_id()
+                if default_event_id:
+                    guest_data["event_id"] = default_event_id
+                else:
+                    # Create a default event if none exists
+                    default_event = await self.create_default_event()
+                    if default_event:
+                        guest_data["event_id"] = default_event["id"]
+                    else:
+                        raise Exception("No event available for registration")
+            
+            # Use service client to bypass RLS for guest creation
+            response = self.service_client.table("guests").insert(guest_data).execute()
+            if response.data:
+                return response.data[0]
+            else:
+                raise Exception("Failed to create guest")
+        except Exception as e:
+            logger.error(f"Error creating guest: {e}")
+            raise
+    
     async def get_current_event(self) -> Optional[Dict[str, Any]]:
         """Get the current active event."""
         try:
@@ -96,12 +122,24 @@ class SupabaseClient:
             return None
     
     async def get_attendee_by_qr_id(self, qr_code_id: str) -> Optional[Dict[str, Any]]:
-        """Get attendee by QR code ID."""
+        """Get attendee or guest by QR code ID."""
         try:
+            # First check attendees table
             response = self.client.table("attendees").select("*").eq("qr_code_id", qr_code_id).execute()
-            return response.data[0] if response.data else None
+            if response.data:
+                return response.data[0]
+            
+            # If not found in attendees, check guests table
+            guest_response = self.client.table("guests").select("*").eq("qr_code_id", qr_code_id).execute()
+            if guest_response.data:
+                # Add a marker to identify this as a guest
+                guest_data = guest_response.data[0]
+                guest_data["is_guest"] = True
+                return guest_data
+            
+            return None
         except Exception as e:
-            logger.error(f"Error getting attendee by QR ID: {e}")
+            logger.error(f"Error getting attendee/guest by QR ID: {e}")
             return None
     
     async def check_attendee_exists(self, email: str, phone: str = None) -> Optional[Dict[str, Any]]:
@@ -113,19 +151,30 @@ class SupabaseClient:
         return None
     
     async def update_attendee_checkin(self, qr_code_id: str) -> Optional[Dict[str, Any]]:
-        """Update attendee check-in status."""
+        """Update attendee or guest check-in status."""
         try:
             from datetime import datetime
-            response = self.client.table("attendees").update({
+            checkin_data = {
                 "is_checked_in": True,
                 "checked_in_at": datetime.utcnow().isoformat()
-            }).eq("qr_code_id", qr_code_id).execute()
+            }
             
+            # First try to update in attendees table
+            response = self.client.table("attendees").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
             if response.data:
                 return response.data[0]
+            
+            # If not found in attendees, try guests table
+            guest_response = self.client.table("guests").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
+            if guest_response.data:
+                # Add guest marker and return
+                guest_data = guest_response.data[0]
+                guest_data["is_guest"] = True
+                return guest_data
+            
             return None
         except Exception as e:
-            logger.error(f"Error updating attendee check-in: {e}")
+            logger.error(f"Error updating attendee/guest check-in: {e}")
             return None
     
     async def _enrich_attendees_with_volunteer_info(self, attendees: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -502,6 +551,16 @@ class SupabaseClient:
             return True
         except Exception as e:
             logger.error(f"Error deleting attendee {attendee_id}: {e}")
+            return False
+    
+    async def delete_guest(self, guest_id: str) -> bool:
+        """Delete a guest record from the database."""
+        try:
+            response = self.service_client.table("guests").delete().eq("id", guest_id).execute()
+            logger.info(f"Deleted guest: {guest_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting guest {guest_id}: {e}")
             return False
     
     # User management methods

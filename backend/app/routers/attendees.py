@@ -24,6 +24,7 @@ from app.models.attendee import (
 )
 from app.utils.supabase_client import supabase_client
 from app.utils.qr_generator import qr_generator
+from app.utils.pdf_generator import pdf_generator
 from app.utils.email_provider import get_email_sender
 from app.utils.auth import (
     get_current_president, 
@@ -610,6 +611,42 @@ async def send_registration_email_with_pdf_task(
         logger.exception("Full traceback:")
 
 
+async def send_guest_invitation_email_task(
+    email: str,
+    name: str,
+    qr_codes_data: list
+):
+    """Background task to send guest invitation email with PDF attachment."""
+    try:
+        logger.info(f"Starting to send guest invitation email to: {email}")
+        sender = get_email_sender()
+        
+        # Get event details for PDF
+        event_details = await sender.get_current_event_details()
+        
+        # Generate PDF for guest tickets
+        pdf_buffer = pdf_generator.generate_guest_tickets_pdf(
+            qr_codes_data=qr_codes_data,
+            event_name=event_details.get('name', 'Event')
+        )
+        
+        # Send email with PDF attachment
+        result = await sender.send_guest_invitation_email_with_pdf(
+            email=email,
+            name=name,
+            qr_codes_data=qr_codes_data,
+            pdf_buffer=pdf_buffer
+        )
+        
+        if result:
+            logger.info(f"Guest invitation email sent successfully to: {email}")
+        else:
+            logger.error(f"Guest invitation email failed to send to: {email}")
+    except Exception as e:
+        logger.error(f"Failed to send guest invitation email to {email}: {e}")
+        logger.exception("Full traceback:")
+
+
 async def send_resend_email_with_pdf_task(
     email: str,
     name: str,
@@ -810,24 +847,41 @@ async def register_attendee(
                 # Calculate price per ticket
                 price_per_ticket = total_price / attendee.ticket_quantity
                 
-                # Prepare attendee record for this ticket
-                attendee_data = {
-                    "name": attendee.name,
-                    "email": attendee.email.lower().strip(),  # Normalize email to lowercase
-                    "phone": attendee.phone,
-                    "payment_mode": attendee.payment_mode,
-                    "food_option": attendee.food_option,
-                    "ticket_quantity": 1,  # Each record represents 1 ticket
-                    "total_price": price_per_ticket,
-                    "event_id": event_id,
-                    "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
-                    "qr_code_id": qr_code_id,
-                    "qr_code_url": qr_code_url,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "is_checked_in": False
-                }
+                # Prepare record for this ticket (attendee or guest)
+                if attendee.is_guest:
+                    # Guest record - no payment information, but food enabled
+                    record_data = {
+                        "name": attendee.name,
+                        "email": attendee.email.lower().strip(),  # Normalize email to lowercase
+                        "phone": attendee.phone,
+                        "guest_type": "president",  # Default guest type
+                        "food_option": "with_food",  # All guests have food enabled
+                        "event_id": event_id,
+                        "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
+                        "qr_code_id": qr_code_id,
+                        "qr_code_url": qr_code_url,
+                        "created_at": datetime.utcnow().isoformat(),
+                        "is_checked_in": False
+                    }
+                else:
+                    # Regular attendee record
+                    record_data = {
+                        "name": attendee.name,
+                        "email": attendee.email.lower().strip(),  # Normalize email to lowercase
+                        "phone": attendee.phone,
+                        "payment_mode": attendee.payment_mode,
+                        "food_option": attendee.food_option,
+                        "ticket_quantity": 1,  # Each record represents 1 ticket
+                        "total_price": price_per_ticket,
+                        "event_id": event_id,
+                        "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
+                        "qr_code_id": qr_code_id,
+                        "qr_code_url": qr_code_url,
+                        "created_at": datetime.utcnow().isoformat(),
+                        "is_checked_in": False
+                    }
                 
-                attendee_records.append(attendee_data)
+                attendee_records.append(record_data)
                 
                 # Store QR code data for PDF generation
                 qr_codes_data.append({
@@ -862,19 +916,29 @@ async def register_attendee(
         created_attendees = []
         try:
             for i, attendee_data in enumerate(attendee_records):
-                created_attendee = await supabase_client.create_attendee(attendee_data)
+                if attendee.is_guest:
+                    # Create guest record instead of attendee
+                    created_attendee = await supabase_client.create_guest(attendee_data)
+                    logger.info(f"Created guest record {i+1}/{len(attendee_records)}")
+                else:
+                    # Create regular attendee record
+                    created_attendee = await supabase_client.create_attendee(attendee_data)
+                    logger.info(f"Created attendee record {i+1}/{len(attendee_records)}")
                 created_attendees.append(created_attendee)
-                logger.info(f"Created attendee record {i+1}/{len(attendee_records)}")
                 
         except Exception as e:
-            logger.error(f"Failed to create attendee records: {e}")
-            # Rollback: Delete all created attendees
-            for i, created_attendee in enumerate(created_attendees):
+            logger.error(f"Failed to create registration records: {e}")
+            # Rollback: Delete all created records
+            for i, created_record in enumerate(created_attendees):
                 try:
-                    await supabase_client.delete_attendee(created_attendee["id"])
-                    logger.info(f"Rolled back attendee record {i+1}")
+                    if attendee.is_guest:
+                        await supabase_client.delete_guest(created_record["id"])
+                        logger.info(f"Rolled back guest record {i+1}")
+                    else:
+                        await supabase_client.delete_attendee(created_record["id"])
+                        logger.info(f"Rolled back attendee record {i+1}")
                 except Exception as rollback_error:
-                    logger.error(f"Failed to rollback attendee {created_attendee.get('id', 'unknown')}: {rollback_error}")
+                    logger.error(f"Failed to rollback record {created_record.get('id', 'unknown')}: {rollback_error}")
             
             # Clean up QR codes
             for cleanup_data in qr_codes_data:
@@ -889,16 +953,27 @@ async def register_attendee(
                 detail="Failed to create registration records. Please try again."
             )
         
-        # Step 3: Send registration email with PDF attachment (only if all tickets created successfully)
+        # Step 3: Send appropriate email (only if all tickets created successfully)
         try:
-            logger.info(f"Sending registration email to {attendee.email} for {len(qr_codes_data)} tickets")
-            await send_registration_email_with_pdf_task(
-                attendee.email,
-                attendee.name,
-                qr_codes_data,
-                total_price
-            )
-            logger.info(f"Successfully sent registration email to {attendee.email}")
+            if attendee.is_guest:
+                # Send guest invitation email for the first QR code
+                logger.info(f"Sending guest invitation email to {attendee.email}")
+                await send_guest_invitation_email_task(
+                    attendee.email,
+                    attendee.name,
+                    qr_codes_data
+                )
+                logger.info(f"Successfully sent guest invitation email to {attendee.email}")
+            else:
+                # Send regular registration email with PDF attachment
+                logger.info(f"Sending registration email to {attendee.email} for {len(qr_codes_data)} tickets")
+                await send_registration_email_with_pdf_task(
+                    attendee.email,
+                    attendee.name,
+                    qr_codes_data,
+                    total_price
+                )
+                logger.info(f"Successfully sent registration email to {attendee.email}")
         except Exception as e:
             logger.error(f"Email sending failed for {attendee.email}: {e}")
             # Note: We don't rollback the registration if email fails
@@ -967,10 +1042,12 @@ async def checkin_attendee(
         
         # Check if already checked in
         if attendee.get("is_checked_in", False):
+            is_guest = attendee.get("is_guest", False)
+            already_checked_message = "VIP already checked in" if is_guest else "Attendee already checked in"
             return CheckInResponse(
                 success=False,
                 attendee=AttendeeResponse(**attendee),
-                message="Attendee already checked in"
+                message=already_checked_message
             )
         
         # Update check-in status
@@ -990,10 +1067,14 @@ async def checkin_attendee(
             updated_attendee["name"]
         )
         
+        # Determine if this is a guest or regular attendee
+        is_guest = updated_attendee.get("is_guest", False)
+        checkin_message = "VIP Check-in successful" if is_guest else "Check-in successful"
+        
         return CheckInResponse(
             success=True,
             attendee=AttendeeResponse(**updated_attendee),
-            message="Check-in successful"
+            message=checkin_message
         )
         
     except HTTPException:

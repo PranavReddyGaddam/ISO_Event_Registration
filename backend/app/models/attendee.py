@@ -54,7 +54,7 @@ class AttendeeBase(BaseModel):
 
 class AttendeeCreate(AttendeeBase):
     """Model for creating a new attendee."""
-    pass
+    is_guest: bool = Field(default=False, description="Whether this is a guest registration")
 
 
 class AttendeeResponse(AttendeeBase):

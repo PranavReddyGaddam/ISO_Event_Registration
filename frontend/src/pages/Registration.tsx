@@ -29,6 +29,7 @@ const Registration: React.FC = () => {
   const [showFullLeaderboard, setShowFullLeaderboard] = useState(false);
   const [transactionScreenshot, setTransactionScreenshot] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [isGuest, setIsGuest] = useState(false);
 
   const apiClient = useApiClient();
   const { isPresident, isAuthenticated, isLoading } = useAuth();
@@ -144,8 +145,12 @@ const Registration: React.FC = () => {
     }
 
     try {
-      // First, register the attendee
-      const response = await apiClient.post<AttendeeResponse>('/api/register', formData);
+      // First, register the attendee (or guest)
+      const registrationData = {
+        ...formData,
+        is_guest: isGuest
+      };
+      const response = await apiClient.post<AttendeeResponse>('/api/register', registrationData);
       
       // Then upload transaction screenshot if Zelle payment
       if (formData.payment_mode === 'zelle' && transactionScreenshot) {
@@ -168,6 +173,7 @@ const Registration: React.FC = () => {
       setSelectedPricing(null);
       setTransactionScreenshot(null);
       setUploadStatus('idle');
+      setIsGuest(false);
     } catch (error: any) {
       console.error('Registration error:', error);
       setStatus(ApiStatus.ERROR);
@@ -360,6 +366,27 @@ const Registration: React.FC = () => {
               </select>
               {errors.ticket_quantity && <p className="mt-1 text-sm text-red-300">{errors.ticket_quantity}</p>}
             </div>
+
+            {/* Guest Registration Option - President Only */}
+            {isPresident() && (
+              <div>
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={isGuest}
+                    onChange={(e) => setIsGuest(e.target.checked)}
+                    className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    disabled={status === ApiStatus.LOADING}
+                  />
+                  <span className="text-sm font-medium text-gray-900">
+                    Guest
+                  </span>
+                </label>
+                <p className="mt-1 text-xs text-gray-600">
+                  Check this box to register as a guest (VIP invitation)
+                </p>
+              </div>
+            )}
 
             <div>
               <label htmlFor="payment_mode" className="block text-sm font-medium text-gray-900 mb-1">

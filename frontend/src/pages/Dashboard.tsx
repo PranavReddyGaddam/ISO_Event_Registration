@@ -665,11 +665,11 @@ const FinancialStatsCards: React.FC<StatsCardsProps> = ({
             <dd className="text-3xl font-bold text-gray-900">
               {hideValues ? "***" : `$${stats.total_revenue.toFixed(2)}`}
             </dd>
-            <dd className="text-sm text-gray-500">
+            {/* <dd className="text-sm text-gray-500">
               {hideValues
                 ? "*** tickets sold"
                 : `${stats.total_tickets_sold} tickets sold`}
-            </dd>
+            </dd> */}
           </dl>
         </div>
       </div>

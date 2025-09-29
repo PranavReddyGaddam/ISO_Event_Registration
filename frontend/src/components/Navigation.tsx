@@ -27,7 +27,11 @@ export const Navigation: React.FC = () => {
         <div className="flex justify-between items-center py-3 sm:py-4">
           {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Regis</h1>
+            <img 
+              src="/Regis.png" 
+              alt="Regis Logo" 
+              className="h-12 sm:h-16 w-auto"
+            />
           </div>
 
           {/* Desktop Navigation */}
