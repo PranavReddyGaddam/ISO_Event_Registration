@@ -624,8 +624,8 @@ async def send_guest_invitation_email_task(
         # Get event details for PDF
         event_details = await sender.get_current_event_details()
         
-        # Generate PDF for guest tickets
-        pdf_buffer = pdf_generator.generate_guest_tickets_pdf(
+        # Generate PDF for guest tickets (same as regular attendees)
+        pdf_buffer = pdf_generator.generate_qr_tickets_pdf(
             qr_codes_data=qr_codes_data,
             event_name=event_details.get('name', 'Event')
         )

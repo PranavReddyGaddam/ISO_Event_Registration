@@ -463,14 +463,16 @@ class MinimalSendGridSender:
         qr_code_url: str,
         qr_code_id: str,
     ) -> bool:
-        """Send VIP-style guest invitation email."""
+        """Send registration email (same as regular attendees)."""
         try:
             event_details = await self.get_current_event_details()
-            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
-            html_content = self.create_guest_invitation_email_content(
+            subject = f"Welcome to {event_details['name']} - Your QR Code Inside!"
+            html_content = self.create_registration_email_content(
                 name=name,
                 qr_code_url=qr_code_url,
                 qr_code_id=qr_code_id,
+                ticket_quantity=1,
+                total_price=0.0,  # Guests don't pay
                 event_details=event_details,
             )
             return self.send_html(email, subject, html_content)
@@ -485,14 +487,16 @@ class MinimalSendGridSender:
         qr_codes_data: list,
         pdf_buffer: bytes,
     ) -> bool:
-        """Send VIP-style guest invitation email with PDF attachment."""
+        """Send registration email with PDF attachment (same as regular attendees)."""
         try:
             event_details = await self.get_current_event_details()
-            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
+            subject = f"Welcome to {event_details['name']} - Your QR Code Tickets Inside!"
             
-            # Create email content without QR code (since it's in PDF)
-            html_content = self.create_guest_invitation_email_content_without_qr(
+            # Use the regular registration email template
+            html_content = self.create_registration_email_with_pdf_content(
                 name=name,
+                ticket_count=len(qr_codes_data),
+                total_price=0.0,  # Guests don't pay
                 event_details=event_details,
             )
             
@@ -502,7 +506,7 @@ class MinimalSendGridSender:
                 subject=subject,
                 html_content=html_content,
                 pdf_buffer=pdf_buffer,
-                filename=f"VIP_Tickets_{name.replace(' ', '_')}.pdf"
+                filename=f"{name.replace(' ', '_')}_tickets.pdf"
             )
         except Exception as e:
             logger.error(f"Error sending guest invitation email with PDF: {e}")
@@ -719,14 +723,16 @@ class MinimalSendGridSender:
         qr_codes_data: list,
         pdf_buffer: bytes,
     ) -> bool:
-        """Send VIP-style guest invitation email with PDF attachment."""
+        """Send registration email with PDF attachment (same as regular attendees)."""
         try:
             event_details = await self.get_current_event_details()
-            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
+            subject = f"Welcome to {event_details['name']} - Your QR Code Tickets Inside!"
             
-            # Create email content without QR code (since it's in PDF)
-            html_content = self.create_guest_invitation_email_content_without_qr(
+            # Use the regular registration email template
+            html_content = self.create_registration_email_with_pdf_content(
                 name=name,
+                ticket_count=len(qr_codes_data),
+                total_price=0.0,  # Guests don't pay
                 event_details=event_details,
             )
             
@@ -736,7 +742,7 @@ class MinimalSendGridSender:
                 subject=subject,
                 html_content=html_content,
                 pdf_bytes=pdf_buffer,
-                filename=f"VIP_Tickets_{name.replace(' ', '_')}.pdf"
+                filename=f"{name.replace(' ', '_')}_tickets.pdf"
             )
         except Exception as e:
             logger.error(f"Error sending guest invitation email with PDF: {e}")
@@ -900,14 +906,16 @@ class SendGridEmailSender:
         qr_code_url: str,
         qr_code_id: str,
     ) -> bool:
-        """Send VIP-style guest invitation email."""
+        """Send registration email (same as regular attendees)."""
         try:
             event_details = await self.get_current_event_details()
-            subject = f"🎉 VIP Invitation to {event_details['name']} - Your Exclusive Access"
-            html_content = self.create_guest_invitation_email_content(
+            subject = f"Welcome to {event_details['name']} - Your QR Code Inside!"
+            html_content = self.create_registration_email_content(
                 name=name,
                 qr_code_url=qr_code_url,
                 qr_code_id=qr_code_id,
+                ticket_quantity=1,
+                total_price=0.0,  # Guests don't pay
                 event_details=event_details,
             )
             return await self._send_email(email, subject, html_content)
