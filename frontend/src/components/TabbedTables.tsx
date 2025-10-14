@@ -95,6 +95,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   const [isDownloadingCSV, setIsDownloadingCSV] = useState(false);
   const [isDownloadingAttendeesCSV, setIsDownloadingAttendeesCSV] = useState(false);
   const [showResendModal, setShowResendModal] = useState(false);
+  const [teamFilter, setTeamFilter] = useState<string>('ALL');
 
   const { getAuthHeaders } = useAuth();
 
@@ -142,8 +143,15 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
     }
   };
 
-  // Filter volunteers based on search query
-  const filteredVolunteers = volunteerSummary?.filter(volunteer => {
+  // Build unique team options
+  const teamOptions = Array.from(
+    new Set((volunteerSummary || []).map(v => v.team_role).filter(Boolean))
+  ).sort();
+
+  // Filter volunteers by team and search query
+  const filteredVolunteers = (volunteerSummary || []).filter(volunteer => {
+    const teamOk = teamFilter === 'ALL' || volunteer.team_role === teamFilter;
+    if (!teamOk) return false;
     if (!volunteerSearchQuery) return true;
     const query = volunteerSearchQuery.toLowerCase();
     return (
@@ -151,7 +159,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
       (volunteer.email?.toLowerCase().includes(query)) ||
       (volunteer.team_role?.toLowerCase().includes(query))
     );
-  }) || [];
+  });
 
   // Sort volunteers based on selected criteria
   const sortedVolunteers = [...filteredVolunteers].sort((a, b) => {
@@ -530,6 +538,19 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   />
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Team Filter */}
+                    <label className="text-sm text-gray-700">Team:</label>
+                    <select
+                      value={teamFilter}
+                      onChange={(e) => setTeamFilter(e.target.value)}
+                      className="px-2 py-1 border border-gray-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="ALL">All Teams</option>
+                      {teamOptions.map((team: string) => (
+                        <option key={team} value={team}>{team}</option>
+                      ))}
+                    </select>
+
                     {/* Download CSV Button */}
                     <button
                       onClick={handleDownloadCSV}

@@ -13,7 +13,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__default_rounds=12)
+# Allow transparent truncation for passwords >72 bytes to maintain compatibility
+# with bcrypt while preserving existing stored hashes.
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__default_rounds=12,
+    bcrypt__truncate_error=False,
+)
 
 # JWT settings
 ALGORITHM = "HS256"
