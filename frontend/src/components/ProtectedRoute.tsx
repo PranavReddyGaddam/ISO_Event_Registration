@@ -10,11 +10,8 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const { isAuthenticated, hasAccess } = useAuth();
 
-  // Global feature flag gate (e.g., disable Check-in globally)
-  const isFeatureDisabled = import.meta.env.VITE_CHECKIN_ENABLED === 'false' && window.location.pathname.startsWith('/checkin');
-  if (isFeatureDisabled) {
-    return <AccessDisabled />;
-  }
+  // Check-in is now controlled by role-based access (president only for testing)
+  // Removed global feature flag to allow role-based access control
 
   // Not authenticated - redirect to login
   if (!isAuthenticated()) {
