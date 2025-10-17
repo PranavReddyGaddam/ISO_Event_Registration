@@ -47,7 +47,7 @@ export const Navigation: React.FC = () => {
             
             {isAuthenticated() ? (
               <>
-                {import.meta.env.VITE_CHECKIN_ENABLED === 'true' && (
+                {isPresident() && (
                   <Link 
                     to="/checkin" 
                     className={`nav-item ${isActivePath('/checkin') ? 'nav-item-active' : 'nav-item-inactive'}`}
@@ -166,7 +166,7 @@ export const Navigation: React.FC = () => {
 
               {isAuthenticated() ? (
                 <>
-                  {import.meta.env.VITE_CHECKIN_ENABLED === 'true' && (
+                  {isPresident() && (
                     <Link
                       to="/checkin"
                       onClick={closeMobileMenu}

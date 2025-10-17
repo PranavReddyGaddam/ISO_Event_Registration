@@ -463,18 +463,58 @@ class SupabaseClient:
     async def get_event_stats(self) -> Dict[str, Any]:
         """Get event statistics."""
         try:
+            # Get pre-calculated stats from event_stats table
+            stats_response = self.service_client.table("event_stats").select("*").limit(1).execute()
+            
+            if stats_response.data and len(stats_response.data) > 0:
+                stats = stats_response.data[0]
+                
+                # Get recent check-ins (this still needs to be calculated from attendees)
+                recent_response = self.service_client.table("attendees").select("*").eq("is_checked_in", True).order("checked_in_at", desc=True).limit(5).execute()
+                recent_checkins = recent_response.data or []
+                
+                # Calculate checked_in_percentage
+                total_registered = stats.get("total_registered", 0)
+                total_checked_in = stats.get("total_checked_in", 0)
+                checked_in_percentage = (total_checked_in / total_registered * 100) if total_registered > 0 else 0
+                
+                return {
+                    "total_registered": stats.get("total_registered", 0),
+                    "total_checked_in": stats.get("total_checked_in", 0),
+                    "checked_in_percentage": round(checked_in_percentage, 2),
+                    "total_tickets_sold": stats.get("total_tickets_sold", 0),
+                    "total_revenue": float(stats.get("total_revenue", 0)),
+                    "revenue_cash": float(stats.get("revenue_cash", 0)),
+                    "revenue_zelle": float(stats.get("revenue_zelle", 0)),
+                    "recent_checkins": recent_checkins
+                }
+            else:
+                # Fallback to calculation if event_stats table is empty
+                return await self._calculate_event_stats_from_attendees()
+        except Exception as e:
+            logger.error(f"Error getting event stats: {e}")
+            return {
+                "total_registered": 0,
+                "total_checked_in": 0,
+                "checked_in_percentage": 0,
+                "recent_checkins": []
+            }
+    
+    async def _calculate_event_stats_from_attendees(self) -> Dict[str, Any]:
+        """Fallback method to calculate stats from attendees table."""
+        try:
             # Get total counts
-            total_response = self.client.table("attendees").select("id", count="exact").execute()
+            total_response = self.service_client.table("attendees").select("id", count="exact").execute()
             total_registered = total_response.count or 0
             
-            checked_in_response = self.client.table("attendees").select("id", count="exact").eq("is_checked_in", True).execute()
+            checked_in_response = self.service_client.table("attendees").select("id", count="exact").eq("is_checked_in", True).execute()
             total_checked_in = checked_in_response.count or 0
             
             # Calculate percentage
             checked_in_percentage = (total_checked_in / total_registered * 100) if total_registered > 0 else 0
             
             # Get ticket statistics
-            ticket_stats_response = self.client.table("attendees").select("ticket_quantity", "total_price", "payment_mode").execute()
+            ticket_stats_response = self.service_client.table("attendees").select("ticket_quantity", "total_price", "payment_mode").execute()
             total_tickets_sold = 0
             total_revenue = 0.0
             revenue_cash = 0.0
@@ -490,7 +530,7 @@ class SupabaseClient:
                         revenue_zelle += float(row.get("total_price", 0))
             
             # Get recent check-ins
-            recent_response = self.client.table("attendees").select("*").eq("is_checked_in", True).order("checked_in_at", desc=True).limit(5).execute()
+            recent_response = self.service_client.table("attendees").select("*").eq("is_checked_in", True).order("checked_in_at", desc=True).limit(5).execute()
             recent_checkins = recent_response.data or []
             
             return {
@@ -504,7 +544,7 @@ class SupabaseClient:
                 "recent_checkins": recent_checkins
             }
         except Exception as e:
-            logger.error(f"Error getting event stats: {e}")
+            logger.error(f"Error calculating event stats from attendees: {e}")
             return {
                 "total_registered": 0,
                 "total_checked_in": 0,
