@@ -1042,12 +1042,17 @@ async def checkin_attendee(
         
         # Check if already checked in
         if attendee.get("is_checked_in", False):
-            is_guest = attendee.get("is_guest", False)
-            already_checked_message = "VIP already checked in" if is_guest else "Attendee already checked in"
+            # Prepare attendee data for response (add missing fields for guests)
+            attendee_data = attendee.copy()
+            if attendee.get("is_guest", False):
+                attendee_data.setdefault("total_price", 0.0)
+                attendee_data.setdefault("ticket_quantity", 1)
+                attendee_data.setdefault("payment_mode", "guest")
+            
             return CheckInResponse(
                 success=False,
-                attendee=AttendeeResponse(**attendee),
-                message=already_checked_message
+                attendee=AttendeeResponse(**attendee_data),
+                message="Attendee already checked in"
             )
         
         # Update check-in status
@@ -1067,14 +1072,17 @@ async def checkin_attendee(
             updated_attendee["name"]
         )
         
-        # Determine if this is a guest or regular attendee
-        is_guest = updated_attendee.get("is_guest", False)
-        checkin_message = "VIP Check-in successful" if is_guest else "Check-in successful"
+        # Prepare attendee data for response (add missing fields for guests)
+        attendee_data = updated_attendee.copy()
+        if updated_attendee.get("is_guest", False):
+            attendee_data.setdefault("total_price", 0.0)
+            attendee_data.setdefault("ticket_quantity", 1)
+            attendee_data.setdefault("payment_mode", "guest")
         
         return CheckInResponse(
             success=True,
-            attendee=AttendeeResponse(**updated_attendee),
-            message=checkin_message
+            attendee=AttendeeResponse(**attendee_data),
+            message="Check-in successful"
         )
         
     except HTTPException:

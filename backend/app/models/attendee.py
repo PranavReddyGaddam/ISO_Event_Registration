@@ -15,7 +15,7 @@ class AttendeeBase(BaseModel):
     email: EmailStr
     phone: str
     ticket_quantity: int = Field(default=1, ge=1, le=20)
-    payment_mode: Literal["cash", "zelle"] = Field(
+    payment_mode: Literal["cash", "zelle", "guest"] = Field(
         default="cash", description="Payment mode used by the attendee"
     )
     food_option: Literal["with_food", "without_food"] = Field(

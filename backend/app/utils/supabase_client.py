@@ -125,12 +125,12 @@ class SupabaseClient:
         """Get attendee or guest by QR code ID."""
         try:
             # First check attendees table
-            response = self.client.table("attendees").select("*").eq("qr_code_id", qr_code_id).execute()
+            response = self.service_client.table("attendees").select("*").eq("qr_code_id", qr_code_id).execute()
             if response.data:
                 return response.data[0]
             
             # If not found in attendees, check guests table
-            guest_response = self.client.table("guests").select("*").eq("qr_code_id", qr_code_id).execute()
+            guest_response = self.service_client.table("guests").select("*").eq("qr_code_id", qr_code_id).execute()
             if guest_response.data:
                 # Add a marker to identify this as a guest
                 guest_data = guest_response.data[0]
@@ -160,12 +160,12 @@ class SupabaseClient:
             }
             
             # First try to update in attendees table
-            response = self.client.table("attendees").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
+            response = self.service_client.table("attendees").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
             if response.data:
                 return response.data[0]
             
             # If not found in attendees, try guests table
-            guest_response = self.client.table("guests").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
+            guest_response = self.service_client.table("guests").update(checkin_data).eq("qr_code_id", qr_code_id).execute()
             if guest_response.data:
                 # Add guest marker and return
                 guest_data = guest_response.data[0]
