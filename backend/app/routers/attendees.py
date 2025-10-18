@@ -75,20 +75,24 @@ async def get_volunteer_details(
         for attendee in all_attendees:
             payment_mode = str(attendee.get("payment_mode", "")).lower()
             amount = float(attendee.get("total_price", 0) or 0)
+            ticket_quantity = attendee.get("ticket_quantity", 1)
             
             if payment_mode == "cash":
                 cash_amount += amount
-                cash_count += 1
+                cash_count += ticket_quantity
             elif payment_mode == "zelle":
                 zelle_amount += amount
-                zelle_count += 1
+                zelle_count += ticket_quantity
+        
+        # Calculate total tickets sold (sum of ticket_quantity, not count of records)
+        total_tickets_sold = sum(attendee.get("ticket_quantity", 1) for attendee in all_attendees)
         
         return {
             "volunteer_id": volunteer_id,
             "full_name": volunteer.get("full_name"),
             "email": volunteer.get("email"),
             "team_role": volunteer.get("team_role"),
-            "total_attendees": len(all_attendees),
+            "total_attendees": total_tickets_sold,
             "total_sales": total_sales,
             "cleared_amount": cleared_amount,
             "pending_amount": pending_amount,
@@ -218,9 +222,15 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
         )
         volunteers = volunteers_resp.data or []
         
+        # Debug: Check if Diya is in the volunteers list for summary
+        diya_in_summary_volunteers = any(v["id"] == "7601cb03-4faf-43cd-883f-81b265d51fba" for v in volunteers)
+        logger.info(f"Summary - Diya Jhawar in volunteers list: {diya_in_summary_volunteers}")
+        logger.info(f"Summary - Total volunteers in list: {len(volunteers)}")
+        
         # Then get attendees data for statistics
-        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode").execute()
+        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode, ticket_quantity").execute()
         attendees_data = attendees_resp.data or []
+        
         
         # Create a map of volunteer statistics
         volunteer_stats = {}
@@ -236,12 +246,14 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 }
             
             if vid in volunteer_stats:
-                volunteer_stats[vid]["total_attendees"] += 1
+                # Use ticket_quantity instead of counting records (same logic as leaderboard)
+                ticket_quantity = attendee.get("ticket_quantity", 1)
+                volunteer_stats[vid]["total_attendees"] += ticket_quantity
                 if str(attendee.get("payment_mode", "")).lower() == "cash":
-                    volunteer_stats[vid]["cash_count"] += 1
+                    volunteer_stats[vid]["cash_count"] += ticket_quantity
                     volunteer_stats[vid]["cash_amount"] += float(attendee.get("total_price", 0))
                 elif str(attendee.get("payment_mode", "")).lower() == "zelle":
-                    volunteer_stats[vid]["zelle_count"] += 1
+                    volunteer_stats[vid]["zelle_count"] += ticket_quantity
                     volunteer_stats[vid]["zelle_amount"] += float(attendee.get("total_price", 0))
         
         # Combine volunteer info with their statistics
@@ -255,6 +267,10 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
                 "zelle_count": 0,
                 "zelle_amount": 0.0,
             })
+            
+            # Debug logging for Diya Jhawar
+            if vid == "7601cb03-4faf-43cd-8":
+                logger.info(f"Diya Jhawar final stats: {stats}")
             
             # Calculate total amount collected and pending amount
             total_collected = stats["cash_amount"] + stats["zelle_amount"]
@@ -300,7 +316,7 @@ async def download_volunteer_summary_csv(current_user: TokenData = Depends(get_c
         volunteers = volunteers_resp.data or []
         
         # Get attendees data for statistics
-        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode").execute()
+        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode, ticket_quantity").execute()
         attendees_data = attendees_resp.data or []
         
         # Create a map of volunteer statistics
@@ -317,12 +333,14 @@ async def download_volunteer_summary_csv(current_user: TokenData = Depends(get_c
                 }
             
             if vid in volunteer_stats:
-                volunteer_stats[vid]["total_attendees"] += 1
+                # Use ticket_quantity instead of counting records (same logic as leaderboard)
+                ticket_quantity = attendee.get("ticket_quantity", 1)
+                volunteer_stats[vid]["total_attendees"] += ticket_quantity
                 if str(attendee.get("payment_mode", "")).lower() == "cash":
-                    volunteer_stats[vid]["cash_count"] += 1
+                    volunteer_stats[vid]["cash_count"] += ticket_quantity
                     volunteer_stats[vid]["cash_amount"] += float(attendee.get("total_price", 0))
                 elif str(attendee.get("payment_mode", "")).lower() == "zelle":
-                    volunteer_stats[vid]["zelle_count"] += 1
+                    volunteer_stats[vid]["zelle_count"] += ticket_quantity
                     volunteer_stats[vid]["zelle_amount"] += float(attendee.get("total_price", 0))
         
         # Prepare CSV data
@@ -1158,6 +1176,7 @@ def filter_stats_by_role(stats: dict, user_role: str) -> dict:
 @router.get("/volunteers/leaderboard")
 async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_current_leaderboard_user)):
     """Get volunteer leaderboard with top 3 performers and current user's rank."""
+    logger.info("Leaderboard endpoint called")
     try:
         # Get all volunteers (exclude leadership roles)
         volunteers_resp = (
@@ -1210,6 +1229,20 @@ async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_curren
         volunteer_ids = [v["id"] for v in volunteers]
         attendees_resp = supabase_client.client.table("attendees").select("created_by, ticket_quantity").in_("created_by", volunteer_ids).execute()
         attendees_data = attendees_resp.data or []
+        
+        # Debug logging for leaderboard
+        diya_leaderboard_attendees = [a for a in attendees_data if a.get("created_by") == "7601cb03-4faf-43cd-883f-81b265d51fba"]
+        logger.info(f"Leaderboard - Diya Jhawar's attendees count: {len(diya_leaderboard_attendees)}")
+        for i, attendee in enumerate(diya_leaderboard_attendees[:5]):  # Log first 5
+            logger.info(f"Leaderboard - Diya attendee {i+1}: ticket_quantity={attendee.get('ticket_quantity')}")
+        leaderboard_total = sum(a.get("ticket_quantity", 1) for a in diya_leaderboard_attendees)
+        logger.info(f"Leaderboard - Diya Jhawar total tickets calculated: {leaderboard_total}")
+        
+        # Debug: Check if Diya is in the volunteers list
+        diya_in_volunteers = any(v["id"] == "7601cb03-4faf-43cd-883f-81b265d51fba" for v in volunteers)
+        logger.info(f"Leaderboard - Diya Jhawar in volunteers list: {diya_in_volunteers}")
+        logger.info(f"Leaderboard - Total volunteers in list: {len(volunteers)}")
+        logger.info(f"Leaderboard - Volunteer IDs: {[v['id'] for v in volunteers[:5]]}")  # First 5 IDs
         
         # Count tickets per volunteer
         volunteer_tickets = {}
