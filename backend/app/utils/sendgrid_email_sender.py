@@ -854,6 +854,8 @@ import asyncio
 import base64
 from typing import List, Dict, Any
 import logging
+import ssl
+import urllib3
 
 from app.config import settings
 from app.utils.supabase_client import supabase_client
@@ -870,6 +872,10 @@ from sendgrid.helpers.mail import (
     FileType,
     Disposition,
 )
+
+# Disable SSL warnings and certificate verification for SendGrid
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 logger = logging.getLogger(__name__)

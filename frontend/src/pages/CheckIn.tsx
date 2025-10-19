@@ -15,6 +15,7 @@ const CheckIn: React.FC = () => {
   const [scannerInitializing, setScannerInitializing] = useState(false);
   const [manualQrId, setManualQrId] = useState('');
   const [recentCheckIns, setRecentCheckIns] = useState<AttendeeResponse[]>([]);
+  const [backgroundColor, setBackgroundColor] = useState<string>('');
 
   const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +27,17 @@ const CheckIn: React.FC = () => {
       stopScanner();
     };
   }, []);
+
+  // Handle background color change and reset
+  useEffect(() => {
+    if (backgroundColor) {
+      const timer = setTimeout(() => {
+        setBackgroundColor('');
+      }, 2000); // Reset after 2 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [backgroundColor]);
 
   const startScanner = async () => {
     try {
@@ -198,6 +210,13 @@ const CheckIn: React.FC = () => {
         // Add to recent check-ins
         setRecentCheckIns(prev => [response.attendee, ...prev.slice(0, 4)]);
         
+        // Set background color based on food option
+        if (response.attendee.food_option === 'with_food') {
+          setBackgroundColor('golden');
+        } else if (response.attendee.food_option === 'without_food') {
+          setBackgroundColor('purple');
+        }
+        
         // Auto-clear success message after 3 seconds
         setTimeout(() => {
           setSuccessData(null);
@@ -224,8 +243,18 @@ const CheckIn: React.FC = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  // Get background color class
+  const getBackgroundClass = () => {
+    if (backgroundColor === 'golden') {
+      return 'min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 transition-colors duration-500';
+    } else if (backgroundColor === 'purple') {
+      return 'min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 transition-colors duration-500';
+    }
+    return 'min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8';
+  };
+
   return (
-    <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
+    <div className={getBackgroundClass()}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
