@@ -448,7 +448,7 @@ class SupabaseClient:
     ) -> tuple[List[Dict[str, Any]], int]:
         """Get attendees registered by a specific volunteer."""
         try:
-            query = self.client.table("attendees").select("*", count="exact").eq("created_by", volunteer_id)
+            query = self.service_client.table("attendees").select("*", count="exact").eq("created_by", volunteer_id)
             
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             attendees = response.data or []

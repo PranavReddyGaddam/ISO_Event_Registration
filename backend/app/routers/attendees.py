@@ -227,34 +227,54 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
         logger.info(f"Summary - Diya Jhawar in volunteers list: {diya_in_summary_volunteers}")
         logger.info(f"Summary - Total volunteers in list: {len(volunteers)}")
         
-        # Then get attendees data for statistics
-        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode, ticket_quantity").execute()
-        attendees_data = attendees_resp.data or []
-        
-        
-        # Create a map of volunteer statistics
+        # Use the same logic as individual volunteer details - get attendees by volunteer ID directly
         volunteer_stats = {}
-        for attendee in attendees_data:
-            vid = attendee.get("created_by")
-            if vid and vid not in volunteer_stats:
-                volunteer_stats[vid] = {
-                    "total_attendees": 0,
-                    "cash_count": 0,
-                    "cash_amount": 0.0,
-                    "zelle_count": 0,
-                    "zelle_amount": 0.0,
-                }
+        for volunteer in volunteers:
+            vid = volunteer["id"]
             
-            if vid in volunteer_stats:
-                # Use ticket_quantity instead of counting records (same logic as leaderboard)
+            # Get attendees for this specific volunteer (same as individual endpoint)
+            all_attendees, _ = await supabase_client.get_attendees_by_volunteer(
+                volunteer_id=vid,
+                limit=10000,  # Get all attendees for accurate calculation
+                offset=0
+            )
+            
+            # Debug logging for Diya Jhawar's data
+            if vid == "7601cb03-4faf-43cd-883f-81b265d51fba":
+                logger.info(f"Summary - Diya Jhawar's attendees count: {len(all_attendees)}")
+                for i, attendee in enumerate(all_attendees[:5]):  # Log first 5
+                    logger.info(f"Summary - Diya attendee {i+1}: ticket_quantity={attendee.get('ticket_quantity')}, payment_mode={attendee.get('payment_mode')}")
+                total_tickets = sum(attendee.get("ticket_quantity", 1) for attendee in all_attendees)
+                logger.info(f"Summary - Diya Jhawar total tickets calculated: {total_tickets}")
+            
+            # Calculate statistics for this volunteer (same logic as individual endpoint)
+            total_attendees = 0
+            cash_count = 0
+            cash_amount = 0.0
+            zelle_count = 0
+            zelle_amount = 0.0
+            
+            for attendee in all_attendees:
+                payment_mode = str(attendee.get("payment_mode", "")).lower()
+                amount = float(attendee.get("total_price", 0) or 0)
                 ticket_quantity = attendee.get("ticket_quantity", 1)
-                volunteer_stats[vid]["total_attendees"] += ticket_quantity
-                if str(attendee.get("payment_mode", "")).lower() == "cash":
-                    volunteer_stats[vid]["cash_count"] += ticket_quantity
-                    volunteer_stats[vid]["cash_amount"] += float(attendee.get("total_price", 0))
-                elif str(attendee.get("payment_mode", "")).lower() == "zelle":
-                    volunteer_stats[vid]["zelle_count"] += ticket_quantity
-                    volunteer_stats[vid]["zelle_amount"] += float(attendee.get("total_price", 0))
+                
+                total_attendees += ticket_quantity
+                
+                if payment_mode == "cash":
+                    cash_amount += amount
+                    cash_count += ticket_quantity
+                elif payment_mode == "zelle":
+                    zelle_amount += amount
+                    zelle_count += ticket_quantity
+            
+            volunteer_stats[vid] = {
+                "total_attendees": total_attendees,
+                "cash_count": cash_count,
+                "cash_amount": cash_amount,
+                "zelle_count": zelle_count,
+                "zelle_amount": zelle_amount,
+            }
         
         # Combine volunteer info with their statistics
         result = []
@@ -315,8 +335,8 @@ async def download_volunteer_summary_csv(current_user: TokenData = Depends(get_c
         )
         volunteers = volunteers_resp.data or []
         
-        # Get attendees data for statistics
-        attendees_resp = supabase_client.client.table("attendees").select("created_by, total_price, payment_mode, ticket_quantity").execute()
+        # Get attendees data for statistics (use service_client to bypass RLS)
+        attendees_resp = supabase_client.service_client.table("attendees").select("created_by, total_price, payment_mode, ticket_quantity").execute()
         attendees_data = attendees_resp.data or []
         
         # Create a map of volunteer statistics
