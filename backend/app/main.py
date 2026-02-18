@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="Volunteer Event Check-in API",
+    title="Holi Event Check-in API",
     description="QR Code-based event check-in system with email integration",
     version="1.0.0",
     docs_url="/api/docs",
@@ -64,7 +64,7 @@ async def root():
         event_name = settings.event_name
     
     return JSONResponse({
-        "message": "Volunteer Event Check-in API",
+        "message": "Holi Event Check-in API",
         "version": "1.0.0",
         "docs": "/api/docs",
         "event": event_name,

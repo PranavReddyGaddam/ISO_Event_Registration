@@ -19,11 +19,14 @@ import VolunteerApplicationsManager from "../components/VolunteerApplicationsMan
 import EventManager from "../components/EventManager";
 import TabbedTables from "../components/TabbedTables";
 import UpdateClearedAmountModal from "../components/UpdateClearedAmountModal";
+import { Event } from "../types/event";
 
 const Dashboard: React.FC = () => {
   const { isPresident, isFinanceDirector } = useAuth();
   const [stats, setStats] = useState<EventStats | null>(null);
   const [attendees, setAttendees] = useState<AttendeeResponse[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [filter, setFilter] = useState<AttendeeFilter>({
     checked_in: undefined,
     search: "",
@@ -72,11 +75,29 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    loadEvents();
 
     // Auto-refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(() => {
+      loadData();
+      loadEvents();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [filter]);
+  }, [filter, selectedEventId]);
+
+  const loadEvents = async () => {
+    try {
+      const eventsData = await apiClient.get<Event[]>("/api/events/");
+      setEvents(eventsData);
+      
+      // Auto-select the first event if none is selected
+      if (!selectedEventId && eventsData.length > 0) {
+        setSelectedEventId(eventsData[0].id);
+      }
+    } catch (error) {
+      console.error("Failed to load events:", error);
+    }
+  };
 
   const loadData = async () => {
     setStatus(ApiStatus.LOADING);
@@ -96,8 +117,14 @@ const Dashboard: React.FC = () => {
         }),
       };
 
+      // Build stats URL with event filter
+      const statsUrl = selectedEventId ? `/api/stats?event_id=${selectedEventId}` : "/api/stats";
+
+      // Build volunteer summary URL with event filter
+      const volunteerSummaryUrl = selectedEventId ? `/api/volunteers/summary?event_id=${selectedEventId}` : "/api/volunteers/summary";
+
       const [statsData, attendeesData, volunteersData] = await Promise.all([
-        apiClient.get<EventStats>("/api/stats"),
+        apiClient.get<EventStats>(statsUrl),
         apiClient.get<PaginatedResponse<AttendeeResponse>>(
           "/api/attendees",
           {
@@ -105,9 +132,10 @@ const Dashboard: React.FC = () => {
             // send current sort settings to backend for whole-list sorting
             sort_by: (sortBy as string) || "created_at",
             sort_dir: sortDir,
+            ...(selectedEventId && { event_id: selectedEventId }),
           }
         ),
-        apiClient.get<any[]>("/api/volunteers/summary"),
+        apiClient.get<any[]>(volunteerSummaryUrl),
       ]);
 
       setStats(statsData);
@@ -122,11 +150,13 @@ const Dashboard: React.FC = () => {
             food_option: "with_food",
             limit: 10000,
             offset: 0,
+            ...(selectedEventId && { event_id: selectedEventId }),
           }),
           apiClient.get<PaginatedResponse<AttendeeResponse>>("/api/attendees", {
             food_option: "without_food",
             limit: 10000,
             offset: 0,
+            ...(selectedEventId && { event_id: selectedEventId }),
           }),
         ]);
 
@@ -149,6 +179,15 @@ const Dashboard: React.FC = () => {
       setStatus(ApiStatus.ERROR);
       setError("Failed to load dashboard data. Please try again.");
     }
+  };
+
+  const handleEventChange = (eventId: string) => {
+    setSelectedEventId(eventId);
+    // Reset pagination when changing events
+    setFilter((prev) => ({
+      ...prev,
+      offset: 0,
+    }));
   };
 
   const handleSearch = (query: string) => {
@@ -354,12 +393,37 @@ const Dashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Event Dashboard
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-gray-700">
-            Monitor registrations and check-ins in real-time
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Event Dashboard
+              </h1>
+              <p className="mt-2 text-sm sm:text-base text-gray-700">
+                Monitor registrations and check-ins in real-time
+              </p>
+            </div>
+            
+            {/* Event Selector Dropdown */}
+            {events.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="event-selector" className="text-sm font-medium text-gray-700">
+                  Event:
+                </label>
+                <select
+                  id="event-selector"
+                  value={selectedEventId || ""}
+                  onChange={(e) => handleEventChange(e.target.value)}
+                  className="block w-full sm:w-48 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      {event.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Error State */}

@@ -209,8 +209,11 @@ def filter_volunteer_summary_by_role(volunteers: list, user_role: str) -> list:
 
 # Volunteers aggregation endpoint
 @router.get("/volunteers/summary")
-async def get_volunteer_summary(current_user: TokenData = Depends(get_current_president_or_finance_director)):
-    """Get all volunteers with their registration statistics."""
+async def get_volunteer_summary(
+    event_id: Optional[str] = Query(None, description="Filter volunteer summary by specific event ID"),
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
+):
+    """Get all volunteers with their registration statistics, optionally filtered by event."""
     try:
         # First, get all sales team users (volunteers, president, finance director)
         volunteers_resp = (
@@ -236,7 +239,8 @@ async def get_volunteer_summary(current_user: TokenData = Depends(get_current_pr
             all_attendees, _ = await supabase_client.get_attendees_by_volunteer(
                 volunteer_id=vid,
                 limit=10000,  # Get all attendees for accurate calculation
-                offset=0
+                offset=0,
+                event_id=event_id  # Add event filtering
             )
             
             # Debug logging for Diya Jhawar's data
@@ -791,13 +795,15 @@ async def register_attendee(
         # No duplicate checking is performed - users can register multiple times with same email
         
         # Get default event ID (assuming single event for now)
-        event_response = supabase_client.client.table("events").select("id").limit(1).execute()
+        event_response = supabase_client.client.table("events").select("*").order("updated_at", desc=True).limit(1).execute()
         if not event_response.data:
             raise HTTPException(
                 status_code=500,
                 detail="No event found in database"
             )
-        event_id = event_response.data[0]["id"]
+        current_event = event_response.data[0]
+        event_id = current_event["id"]
+        event_name = current_event["name"]
         
         # Calculate ticket pricing using the pricing router logic
         try:
@@ -895,6 +901,7 @@ async def register_attendee(
                         "guest_type": "president",  # Default guest type
                         "food_option": "with_food",  # All guests have food enabled
                         "event_id": event_id,
+                        "event_name": event_name,  # Use dynamic event name
                         "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
                         "qr_code_id": qr_code_id,
                         "qr_code_url": qr_code_url,
@@ -912,6 +919,7 @@ async def register_attendee(
                         "ticket_quantity": 1,  # Each record represents 1 ticket
                         "total_price": price_per_ticket,
                         "event_id": event_id,
+                        "event_name": event_name,  # Use dynamic event name
                         "created_by": current_user.user_id if hasattr(current_user, 'user_id') else None,
                         "qr_code_id": qr_code_id,
                         "qr_code_url": qr_code_url,
@@ -1142,6 +1150,7 @@ async def get_attendees(
     offset: int = 0,
     sort_by: str = None,
     sort_dir: str = "desc",
+    event_id: Optional[str] = Query(None, description="Filter attendees by specific event ID"),
     current_user: TokenData = Depends(get_current_dashboard_user)
 ):
     """Get list of attendees with optional filters and pagination."""
@@ -1153,7 +1162,8 @@ async def get_attendees(
             limit=limit,
             offset=offset,
             sort_by=sort_by,
-            sort_dir=sort_dir
+            sort_dir=sort_dir,
+            event_id=event_id
         )
         
         # Calculate pagination metadata
@@ -1333,10 +1343,13 @@ async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_curren
 
 
 @router.get("/stats", response_model=EventStats)
-async def get_event_stats(current_user: TokenData = Depends(get_current_dashboard_user)):
-    """Get event statistics."""
+async def get_event_stats(
+    event_id: Optional[str] = Query(None, description="Filter stats by specific event ID"),
+    current_user: TokenData = Depends(get_current_dashboard_user)
+):
+    """Get event statistics, optionally filtered by event."""
     try:
-        stats = await supabase_client.get_event_stats()
+        stats = await supabase_client.get_event_stats(event_id)
         
         # Filter stats based on user role
         filtered_stats = filter_stats_by_role(stats, current_user.role)
@@ -1347,7 +1360,7 @@ async def get_event_stats(current_user: TokenData = Depends(get_current_dashboar
             for attendee in filtered_stats["recent_checkins"]
         ]
         
-        return EventStats(
+        result = EventStats(
             total_registered=filtered_stats["total_registered"],
             total_checked_in=filtered_stats["total_checked_in"],
             checked_in_percentage=filtered_stats["checked_in_percentage"],
@@ -1358,11 +1371,13 @@ async def get_event_stats(current_user: TokenData = Depends(get_current_dashboar
             recent_checkins=recent_checkins
         )
         
+        return result
+        
     except Exception as e:
         logger.error(f"Error getting event stats: {e}")
         raise HTTPException(
             status_code=500,
-            detail="Failed to retrieve event statistics"
+            detail=f"Failed to retrieve event statistics: {str(e)}"
         )
 
 
