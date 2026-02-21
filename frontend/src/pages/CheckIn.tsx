@@ -7,6 +7,9 @@ import { AttendeeResponse, ApiStatus } from '../types';
 import { useApiClient } from '../hooks/useApiClient';
 
 const CheckIn: React.FC = () => {
+  // Check-in is disabled for now
+  const isCheckinEnabled = false;
+
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<AttendeeResponse | null>(null);
@@ -21,6 +24,36 @@ const CheckIn: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const apiClient = useApiClient();
+
+  // If check-in is not yet enabled, show a message
+  if (!isCheckinEnabled) {
+    return (
+      <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md mx-auto">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-8 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Check-in Disabled</h1>
+            <p className="text-gray-700 mb-4">
+              Check-in functionality has been disabled for now.
+            </p>
+            <p className="text-sm text-gray-600">
+              Please check back later when check-in is enabled.
+            </p>
+            <a 
+              href="/registration" 
+              className="mt-6 inline-block px-4 py-2 bg-blue-500/20 backdrop-blur-sm text-gray-900 rounded-lg hover:bg-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-400/50 border border-blue-400/30 transition-colors"
+            >
+              Back to Registration
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     return () => {

@@ -225,40 +225,75 @@ async def get_volunteer_summary(
         )
         volunteers = volunteers_resp.data or []
         
-        # Debug: Check if Diya is in the volunteers list for summary
-        diya_in_summary_volunteers = any(v["id"] == "7601cb03-4faf-43cd-883f-81b265d51fba" for v in volunteers)
-        logger.info(f"Summary - Diya Jhawar in volunteers list: {diya_in_summary_volunteers}")
-        logger.info(f"Summary - Total volunteers in list: {len(volunteers)}")
+        volunteer_ids = [v["id"] for v in volunteers]
+        if not volunteer_ids:
+            return []
         
-        # Use the same logic as individual volunteer details - get attendees by volunteer ID directly
-        volunteer_stats = {}
+        # Fetch all attendees using direct REST API call with no row limit
+        # Supabase's Python client caps at 1000 rows regardless of .limit() or .range()
+        # Using the REST API directly with Prefer: count=exact bypasses this
+        import httpx
+        supabase_url = supabase_client.service_client.supabase_url
+        supabase_key = supabase_client.service_client.supabase_key
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Prefer": "count=exact",
+        }
+        volunteer_ids_set = set(volunteer_ids)
+        all_attendees = []
+        page_size = 1000
+        offset = 0
+        async with httpx.AsyncClient() as http_client:
+            while True:
+                resp = await http_client.get(
+                    f"{supabase_url}/rest/v1/attendees",
+                    headers={**headers, "Range": f"{offset}-{offset + page_size - 1}"},
+                    params={"select": "created_by,ticket_quantity,payment_mode,total_price,event_id"},
+                )
+                rows = resp.json() if resp.status_code in (200, 206) else []
+                if not isinstance(rows, list):
+                    break
+                all_attendees.extend(r for r in rows if r.get("created_by") in volunteer_ids_set)
+                if len(rows) < page_size:
+                    break
+                offset += page_size
+        
+        logger.info(f"Summary - Total attendees fetched from DB: {len(all_attendees)}")
+        
+        # Group attendees by volunteer_id in memory
+        attendees_by_volunteer = {}
+        for attendee in all_attendees:
+            vid = attendee.get("created_by")
+            if vid not in attendees_by_volunteer:
+                attendees_by_volunteer[vid] = []
+            attendees_by_volunteer[vid].append(attendee)
+        
+        # Debug: log all unique event_ids for Diya's attendees
+        diya_attendees_raw = attendees_by_volunteer.get("7601cb03-4faf-43cd-883f-81b265d51fba", [])
+        diya_event_ids = set(repr(a.get("event_id")) for a in diya_attendees_raw)
+        logger.info(f"Summary - Diya raw attendee count: {len(diya_attendees_raw)}")
+        logger.info(f"Summary - Diya unique event_ids (repr): {diya_event_ids}")
+        logger.info(f"Summary - Filtering by event_id (repr): {repr(event_id)}")
+        
+        # Process each volunteer's stats
+        result = []
         for volunteer in volunteers:
             vid = volunteer["id"]
+            # Filter by event_id in memory (avoids Supabase query truncation)
+            volunteer_attendees = [
+                a for a in attendees_by_volunteer.get(vid, [])
+                if not event_id or a.get("event_id") == event_id
+            ]
             
-            # Get attendees for this specific volunteer (same as individual endpoint)
-            all_attendees, _ = await supabase_client.get_attendees_by_volunteer(
-                volunteer_id=vid,
-                limit=10000,  # Get all attendees for accurate calculation
-                offset=0,
-                event_id=event_id  # Add event filtering
-            )
-            
-            # Debug logging for Diya Jhawar's data
-            if vid == "7601cb03-4faf-43cd-883f-81b265d51fba":
-                logger.info(f"Summary - Diya Jhawar's attendees count: {len(all_attendees)}")
-                for i, attendee in enumerate(all_attendees[:5]):  # Log first 5
-                    logger.info(f"Summary - Diya attendee {i+1}: ticket_quantity={attendee.get('ticket_quantity')}, payment_mode={attendee.get('payment_mode')}")
-                total_tickets = sum(attendee.get("ticket_quantity", 1) for attendee in all_attendees)
-                logger.info(f"Summary - Diya Jhawar total tickets calculated: {total_tickets}")
-            
-            # Calculate statistics for this volunteer (same logic as individual endpoint)
+            # Calculate statistics
             total_attendees = 0
             cash_count = 0
             cash_amount = 0.0
             zelle_count = 0
             zelle_amount = 0.0
             
-            for attendee in all_attendees:
+            for attendee in volunteer_attendees:
                 payment_mode = str(attendee.get("payment_mode", "")).lower()
                 amount = float(attendee.get("total_price", 0) or 0)
                 ticket_quantity = attendee.get("ticket_quantity", 1)
@@ -272,57 +307,28 @@ async def get_volunteer_summary(
                     zelle_amount += amount
                     zelle_count += ticket_quantity
             
-            volunteer_stats[vid] = {
+            result.append({
+                "volunteer_id": vid,
+                "full_name": volunteer.get("full_name"),
+                "email": volunteer.get("email"),
+                "team_role": volunteer.get("team_role"),
+                "role": volunteer.get("role"),
+                "cleared_amount": volunteer.get("cleared_amount", 0),
                 "total_attendees": total_attendees,
                 "cash_count": cash_count,
                 "cash_amount": cash_amount,
                 "zelle_count": zelle_count,
                 "zelle_amount": zelle_amount,
-            }
-        
-        # Combine volunteer info with their statistics
-        result = []
-        for volunteer in volunteers:
-            vid = volunteer["id"]
-            stats = volunteer_stats.get(vid, {
-                "total_attendees": 0,
-                "cash_count": 0,
-                "cash_amount": 0.0,
-                "zelle_count": 0,
-                "zelle_amount": 0.0,
-            })
-            
-            # Debug logging for Diya Jhawar
-            if vid == "7601cb03-4faf-43cd-8":
-                logger.info(f"Diya Jhawar final stats: {stats}")
-            
-            # Calculate total amount collected and pending amount
-            total_collected = stats["cash_amount"] + stats["zelle_amount"]
-            cleared_amount = float(volunteer.get("cleared_amount", 0.0))
-            pending_amount = total_collected - cleared_amount
-            
-            result.append({
-                "volunteer_id": vid,
-                "full_name": volunteer.get("full_name"),
-                "email": volunteer.get("email"),
-                "team_role": (
-                    volunteer.get("team_role")
-                    if volunteer.get("role") == "volunteer"
-                    else ("President" if volunteer.get("role") == "president" else "Finance Director")
-                ),
-                "user_role": volunteer.get("role"),
-                "cleared_amount": cleared_amount,
-                "total_collected": total_collected,
-                "pending_amount": pending_amount,
-                **stats
             })
         
-        # Apply role-based filtering
-        filtered_result = filter_volunteer_summary_by_role(result, current_user.role)
-        return filtered_result
+        return result
+        
     except Exception as e:
         logger.error(f"Error getting volunteer summary: {e}")
-        raise HTTPException(status_code=500, detail="Failed to get volunteer summary")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve volunteer summary"
+        )
 
 
 @router.get("/volunteers/summary/csv")
@@ -1204,9 +1210,12 @@ def filter_stats_by_role(stats: dict, user_role: str) -> dict:
 
 
 @router.get("/volunteers/leaderboard")
-async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_current_leaderboard_user)):
+async def get_volunteer_leaderboard(
+    event_id: Optional[str] = Query(None, description="Filter leaderboard by specific event ID"),
+    current_user: TokenData = Depends(get_current_leaderboard_user)
+):
     """Get volunteer leaderboard with top 3 performers and current user's rank."""
-    logger.info("Leaderboard endpoint called")
+    logger.info(f"Leaderboard endpoint called with event_id: {event_id}")
     try:
         # Get all volunteers (exclude leadership roles)
         volunteers_resp = (
@@ -1257,7 +1266,11 @@ async def get_volunteer_leaderboard(current_user: TokenData = Depends(get_curren
         
         # Get ticket counts for each volunteer
         volunteer_ids = [v["id"] for v in volunteers]
-        attendees_resp = supabase_client.client.table("attendees").select("created_by, ticket_quantity").in_("created_by", volunteer_ids).execute()
+        # Build attendees query with optional event filter
+        attendees_query = supabase_client.client.table("attendees").select("created_by, ticket_quantity").in_("created_by", volunteer_ids)
+        if event_id:
+            attendees_query = attendees_query.eq("event_id", event_id)
+        attendees_resp = attendees_query.execute()
         attendees_data = attendees_resp.data or []
         
         # Debug logging for leaderboard

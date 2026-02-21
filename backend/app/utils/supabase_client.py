@@ -461,6 +461,7 @@ class SupabaseClient:
     ) -> tuple[List[Dict[str, Any]], int]:
         """Get attendees registered by a specific volunteer, optionally filtered by event."""
         try:
+            # Select all necessary fields for AttendeeResponse model
             query = self.service_client.table("attendees").select("*", count="exact").eq("created_by", volunteer_id)
             
             # Add event filtering if provided
@@ -470,7 +471,7 @@ class SupabaseClient:
             response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
             attendees = response.data or []
             
-            # Enrich with volunteer information
+            # Enrich with volunteer information for proper AttendeeResponse conversion
             enriched_attendees = await self._enrich_attendees_with_volunteer_info(attendees)
             return enriched_attendees, response.count or 0
         except Exception as e:

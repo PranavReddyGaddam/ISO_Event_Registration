@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     default_volunteer_password: str
     
     # Event Configuration
-    event_name: str = "Volunteer Event 2024"
-    event_date: str = "2024-01-01"
+    event_name: str = "Rang Barse"
+    event_date: str = "2026-03-14"
     
     @validator("cors_origins")
     def parse_cors_origins(cls, v: str) -> list[str]:

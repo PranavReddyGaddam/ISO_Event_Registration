@@ -35,7 +35,20 @@ const VolunteerLeaderboard: React.FC<VolunteerLeaderboardProps> = ({ refreshTrig
     try {
       setIsLoading(true);
       setError(null);
-      const response = await apiClient.get<LeaderboardData>('/api/volunteers/leaderboard');
+      
+      // First, get events to find Rang Barse event ID
+      const events = await apiClient.get<{id: string, name: string}[]>('/api/events');
+      console.log('Available events:', events);
+      const rangBarseEvent = events.find(e => e.name.toLowerCase().includes('rang barse'));
+      console.log('Found Rang Barse event:', rangBarseEvent);
+      
+      // Build URL with Rang Barse event ID if found
+      const url = rangBarseEvent 
+        ? `/api/volunteers/leaderboard?event_id=${rangBarseEvent.id}`
+        : '/api/volunteers/leaderboard';
+      console.log('Leaderboard URL:', url);
+      
+      const response = await apiClient.get<LeaderboardData>(url);
       console.log('Leaderboard response:', response);
       setLeaderboardData(response);
     } catch (err) {

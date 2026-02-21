@@ -7,6 +7,9 @@ export const Navigation: React.FC = () => {
   const location = useLocation();
   const currentUser = getCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Check-in is disabled for now
+  const isCheckinEnabled = false;
 
   const isActivePath = (path: string): boolean => {
     return location.pathname === path || 
@@ -47,12 +50,14 @@ export const Navigation: React.FC = () => {
             
             {isAuthenticated() ? (
               <>
-                <Link 
-                  to="/checkin" 
-                  className={`nav-item ${isActivePath('/checkin') ? 'nav-item-active' : 'nav-item-inactive'}`}
-                >
-                  Check-in
-                </Link>
+                {isCheckinEnabled && (
+                  <Link 
+                    to="/checkin" 
+                    className={`nav-item ${isActivePath('/checkin') ? 'nav-item-active' : 'nav-item-inactive'}`}
+                  >
+                    Check-in
+                  </Link>
+                )}
                 
                 {(isPresident() || isFinanceDirector()) && (
                   <>
@@ -164,17 +169,19 @@ export const Navigation: React.FC = () => {
 
               {isAuthenticated() ? (
                 <>
-                  <Link
-                    to="/checkin"
-                    onClick={closeMobileMenu}
-                    className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActivePath('/checkin')
-                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
-                    }`}
-                  >
-                    Check-in
-                  </Link>
+                  {isCheckinEnabled && (
+                    <Link
+                      to="/checkin"
+                      onClick={closeMobileMenu}
+                      className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                        isActivePath('/checkin')
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-white/60'
+                      }`}
+                    >
+                      Check-in
+                    </Link>
+                  )}
 
                   {(isPresident() || isFinanceDirector()) && (
                     <>

@@ -297,7 +297,7 @@ class GmailEmailSender:
         <body>
             <div class=\"container\">
                 <div class=\"header\">
-                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/Holi%20Poster.jpeg\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
                     <h1>🌟 VIP INVITATION 🌟</h1>
                     <p class=\"subtitle\">Exclusive Access to {event_details['name']}</p>
                 </div>
@@ -543,11 +543,11 @@ class GmailEmailSender:
         <body>
             <div class="container">
                 <div class="header">
-                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/Holi%20Poster.jpeg" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>
-                    <p>We're excited to have you join us for {event_details['name']} on 10/18/2025.</p>
+                    <p>We're excited to have you join us for {event_details['name']} on March 14, 2026 at 10:00 AM.</p>
                     
                     <div class="info-box">
                         <h4>Ticket Information:</h4>
@@ -819,7 +819,7 @@ class GmailEmailSender:
         <body>
             <div class=\"container\">
                 <div class=\"header\">
-                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
+                    <img src=\"https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/Holi%20Poster.jpeg\" alt=\"Event Banner\" style=\"display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;\">
                     <h1>🌟 VIP INVITATION 🌟</h1>
                     <p class=\"subtitle\">Exclusive Access to {event_details['name']}</p>
                 </div>
@@ -914,7 +914,7 @@ class GmailEmailSender:
         <body>
             <div class="container">
                 <div class="header">
-                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/email_poster.png" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
+                    <img src="https://gbvitfwoieyzhozfndkn.supabase.co/storage/v1/object/public/email-assets/Holi%20Poster.jpeg" alt="Event Banner" style="display:block;width:100%;max-width:600px;height:auto;border:0;outline:none;text-decoration:none;">
                 </div>
                 <div class="content">
                     <h2>Your Registration is Confirmed!</h2>

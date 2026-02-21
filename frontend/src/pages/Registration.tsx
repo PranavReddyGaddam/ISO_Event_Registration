@@ -478,46 +478,7 @@ const Registration: React.FC = () => {
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Food Option *
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="food_option"
-                    value="with_food"
-                    checked={formData.food_option === 'with_food'}
-                    onChange={(e) => {
-                      const newFoodOption = e.target.value as 'with_food' | 'without_food';
-                      setFormData(prev => ({ ...prev, food_option: newFoodOption }));
-                      calculatePrice(formData.ticket_quantity, newFoodOption);
-                    }}
-                    className="mr-2 text-blue-600 focus:ring-blue-500"
-                    disabled={status === ApiStatus.LOADING}
-                  />
-                  <span className="text-sm text-gray-900">With Food</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="food_option"
-                    value="without_food"
-                    checked={formData.food_option === 'without_food'}
-                    onChange={(e) => {
-                      const newFoodOption = e.target.value as 'with_food' | 'without_food';
-                      setFormData(prev => ({ ...prev, food_option: newFoodOption }));
-                      calculatePrice(formData.ticket_quantity, newFoodOption);
-                    }}
-                    className="mr-2 text-blue-600 focus:ring-blue-500"
-                    disabled={status === ApiStatus.LOADING}
-                  />
-                  <span className="text-sm text-gray-900">Without Food</span>
-                </label>
-              </div>
-            </div>
-
+            
             {/* Total Price Preview */}
             {selectedPricing && (
               <div className="bg-white/10 backdrop-blur-sm rounded-lg border border-white/30 p-4">
@@ -605,13 +566,6 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ attendee, onReset }) =>
               <span className="text-sm text-gray-700">Tickets:</span>
               <span className="text-sm font-medium text-gray-900">
                 {attendee.ticket_quantity} {attendee.ticket_quantity === 1 ? 'ticket' : 'tickets'}
-              </span>
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-700">Food Option:</span>
-              <span className="text-sm font-medium text-gray-900">
-                {attendee.food_option === 'with_food' ? 'With Food' : 'Without Food'}
               </span>
             </div>
             
