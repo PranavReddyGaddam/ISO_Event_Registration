@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useApiClient } from '../hooks/useApiClient';
 import { ApiStatus } from '../types';
 
@@ -109,7 +110,7 @@ const ChangePasswordForm: React.FC = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* Current Password */}
         <div>
           <label htmlFor="current_password" className="block text-sm font-medium text-gray-900 mb-2">
@@ -121,16 +122,17 @@ const ChangePasswordForm: React.FC = () => {
               id="current_password"
               value={formData.current_password}
               onChange={(e) => handleInputChange('current_password', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
+              className="w-full pl-4 pr-12 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
               placeholder="Enter your current password"
               required
             />
             <button
               type="button"
               onClick={() => togglePasswordVisibility('current')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+              aria-label={showPasswords.current ? 'Hide password' : 'Show password'}
             >
-              {showPasswords.current ? '🙈' : '👁️'}
+              {showPasswords.current ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
@@ -146,16 +148,17 @@ const ChangePasswordForm: React.FC = () => {
               id="new_password"
               value={formData.new_password}
               onChange={(e) => handleInputChange('new_password', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
+              className="w-full pl-4 pr-12 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
               placeholder="Enter your new password (min 6 characters)"
               required
             />
             <button
               type="button"
               onClick={() => togglePasswordVisibility('new')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+              aria-label={showPasswords.new ? 'Hide password' : 'Show password'}
             >
-              {showPasswords.new ? '🙈' : '👁️'}
+              {showPasswords.new ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
@@ -171,16 +174,17 @@ const ChangePasswordForm: React.FC = () => {
               id="confirm_password"
               value={formData.confirm_password}
               onChange={(e) => handleInputChange('confirm_password', e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
+              className="w-full pl-4 pr-12 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/80 text-gray-900 placeholder-gray-500"
               placeholder="Confirm your new password"
               required
             />
             <button
               type="button"
               onClick={() => togglePasswordVisibility('confirm')}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+              aria-label={showPasswords.confirm ? 'Hide password' : 'Show password'}
             >
-              {showPasswords.confirm ? '🙈' : '👁️'}
+              {showPasswords.confirm ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </div>
