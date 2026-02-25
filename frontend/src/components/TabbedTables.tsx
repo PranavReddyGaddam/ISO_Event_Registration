@@ -648,16 +648,16 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {sortedVolunteers.map((v) => (
-                      <tr key={v.volunteer_id} className={`hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : ''}`}>
+                      <tr key={v.volunteer_id} className={`hover:bg-gray-50 ${v.role === 'president' ? 'bg-blue-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 cursor-pointer" onClick={() => onVolunteerClick(v)}>
                           <div className="flex items-center">
                             {v.full_name || '-'}
-                            {v.user_role === 'president' && (
+                            {v.role === 'president' && (
                               <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 President
                               </span>
                             )}
-                            {v.user_role === 'finance_director' && (
+                            {v.role === 'finance_director' && (
                               <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                                 Finance Director
                               </span>
@@ -686,7 +686,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                                 <span className="text-green-600 font-semibold">
                                   ${(v.cleared_amount || 0).toFixed(2)}
                                 </span>
-                                {v.user_role === 'volunteer' && (
+                                {v.role === 'volunteer' && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -722,17 +722,17 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
               <div className="lg:hidden">
                 <div className="divide-y divide-gray-200">
                   {sortedVolunteers.map((v) => (
-                    <div key={v.volunteer_id} className={`p-4 cursor-pointer hover:bg-gray-50 ${v.user_role === 'president' ? 'bg-blue-50' : 'bg-white'}`} onClick={() => onVolunteerClick(v)}>
+                    <div key={v.volunteer_id} className={`p-4 cursor-pointer hover:bg-gray-50 ${v.role === 'president' ? 'bg-blue-50' : 'bg-white'}`} onClick={() => onVolunteerClick(v)}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center">
                             <h3 className="text-sm font-medium text-gray-900">{v.full_name || 'Unnamed Volunteer'}</h3>
-                            {v.user_role === 'president' && (
+                            {v.role === 'president' && (
                               <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 President
                               </span>
                             )}
-                            {v.user_role === 'finance_director' && (
+                            {v.role === 'finance_director' && (
                               <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                                 Finance Director
                               </span>
@@ -768,7 +768,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                             <div className="bg-emerald-50 p-3 rounded-lg">
                               <div className="text-emerald-800 font-medium">Cleared</div>
                               <div className="text-emerald-600 font-semibold">${(v.cleared_amount || 0).toFixed(2)}</div>
-                              {v.user_role === 'volunteer' && (
+                              {v.role === 'volunteer' && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
