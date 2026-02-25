@@ -241,6 +241,6 @@ export const downloadCSV = async (endpoint: string, filename?: string, headers?:
   window.URL.revokeObjectURL(url);
 };
 
-export const resendQrEmail = async (email: string, headers?: Record<string, string>): Promise<{ message: string; email: string; registrations_count: number }> => {
-  return apiClient.post('/api/attendees/resend-qr-email', { email }, headers);
+export const resendQrEmail = async (email: string, headers?: Record<string, string>, eventId?: string): Promise<{ message: string; email: string; registrations_count: number }> => {
+  return apiClient.post('/api/attendees/resend-qr-email', { email, ...(eventId && { event_id: eventId }) }, headers);
 };

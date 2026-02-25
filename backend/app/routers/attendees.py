@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 @router.get("/volunteers/{volunteer_id}/details")
 async def get_volunteer_details(
     volunteer_id: str,
+    event_id: Optional[str] = Query(None, description="Filter by specific event ID"),
     current_user: TokenData = Depends(get_current_president_or_finance_director)
 ):
     """Get volunteer details with financial summary."""
@@ -58,7 +59,8 @@ async def get_volunteer_details(
         all_attendees, _ = await supabase_client.get_attendees_by_volunteer(
             volunteer_id=volunteer_id,
             limit=10000,  # Get all attendees for accurate financial calculation
-            offset=0
+            offset=0,
+            event_id=event_id
         )
         
         # Calculate financial summary
@@ -118,15 +120,17 @@ async def get_volunteer_attendees(
     volunteer_id: str,
     limit: int = 50,
     offset: int = 0,
+    event_id: Optional[str] = Query(None, description="Filter by specific event ID"),
     current_user: TokenData = Depends(get_current_president_or_finance_director)
 ):
-    """Get all attendees registered by a specific volunteer."""
+    """Get all attendees registered by a specific volunteer, optionally filtered by event."""
     try:
         # Get attendees created by this volunteer
         attendees, total_count = await supabase_client.get_attendees_by_volunteer(
             volunteer_id=volunteer_id,
             limit=limit,
-            offset=offset
+            offset=offset,
+            event_id=event_id
         )
         
         # Calculate pagination metadata
@@ -269,13 +273,22 @@ async def get_volunteer_summary(
                 attendees_by_volunteer[vid] = []
             attendees_by_volunteer[vid].append(attendee)
         
-        # Debug: log all unique event_ids for Diya's attendees
-        diya_attendees_raw = attendees_by_volunteer.get("7601cb03-4faf-43cd-883f-81b265d51fba", [])
-        diya_event_ids = set(repr(a.get("event_id")) for a in diya_attendees_raw)
-        logger.info(f"Summary - Diya raw attendee count: {len(diya_attendees_raw)}")
-        logger.info(f"Summary - Diya unique event_ids (repr): {diya_event_ids}")
-        logger.info(f"Summary - Filtering by event_id (repr): {repr(event_id)}")
-        
+        # Fetch per-event cleared amounts if filtering by event
+        event_cleared_map = {}  # volunteer_id -> cleared_amount
+        if event_id:
+            try:
+                eca_resp = (
+                    supabase_client.service_client
+                    .table("volunteer_event_cleared_amounts")
+                    .select("volunteer_id, cleared_amount")
+                    .eq("event_id", event_id)
+                    .execute()
+                )
+                for row in (eca_resp.data or []):
+                    event_cleared_map[row["volunteer_id"]] = float(row["cleared_amount"] or 0)
+            except Exception as e:
+                logger.warning(f"Could not fetch per-event cleared amounts: {e}")
+
         # Process each volunteer's stats
         result = []
         for volunteer in volunteers:
@@ -285,40 +298,48 @@ async def get_volunteer_summary(
                 a for a in attendees_by_volunteer.get(vid, [])
                 if not event_id or a.get("event_id") == event_id
             ]
-            
+
             # Calculate statistics
             total_attendees = 0
             cash_count = 0
             cash_amount = 0.0
             zelle_count = 0
             zelle_amount = 0.0
-            
+
             for attendee in volunteer_attendees:
                 payment_mode = str(attendee.get("payment_mode", "")).lower()
                 amount = float(attendee.get("total_price", 0) or 0)
                 ticket_quantity = attendee.get("ticket_quantity", 1)
-                
+
                 total_attendees += ticket_quantity
-                
+
                 if payment_mode == "cash":
                     cash_amount += amount
                     cash_count += ticket_quantity
                 elif payment_mode == "zelle":
                     zelle_amount += amount
                     zelle_count += ticket_quantity
-            
+
+            total_collected = cash_amount + zelle_amount
+            # Use per-event cleared amount when event_id is provided, else fall back to global
+            if event_id:
+                cleared = event_cleared_map.get(vid, 0.0)
+            else:
+                cleared = float(volunteer.get("cleared_amount") or 0)
             result.append({
                 "volunteer_id": vid,
                 "full_name": volunteer.get("full_name"),
                 "email": volunteer.get("email"),
                 "team_role": volunteer.get("team_role"),
                 "role": volunteer.get("role"),
-                "cleared_amount": volunteer.get("cleared_amount", 0),
+                "cleared_amount": cleared,
                 "total_attendees": total_attendees,
                 "cash_count": cash_count,
                 "cash_amount": cash_amount,
                 "zelle_count": zelle_count,
                 "zelle_amount": zelle_amount,
+                "total_collected": total_collected,
+                "pending_amount": max(0.0, total_collected - cleared),
             })
         
         return result
@@ -540,6 +561,7 @@ async def download_attendees_csv(
 class ResendQrEmailRequest(BaseModel):
     """Model for resending QR email request."""
     email: EmailStr
+    event_id: Optional[str] = None
 
 
 @router.post("/attendees/resend-qr-email")
@@ -549,8 +571,8 @@ async def resend_qr_email(
 ):
     """Resend QR code emails for all registrations under a specific email."""
     try:
-        # Get all attendees for the email
-        attendees = await supabase_client.get_attendees_with_qr_codes_by_email(request.email)
+        # Get all attendees for the email, filtered by event if provided
+        attendees = await supabase_client.get_attendees_with_qr_codes_by_email(request.email, request.event_id)
         
         if not attendees:
             raise HTTPException(

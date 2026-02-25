@@ -60,6 +60,7 @@ const Dashboard: React.FC = () => {
   >([]);
   const [volunteerAttendeesPagination, setVolunteerAttendeesPagination] =
     useState<PaginationMeta | null>(null);
+  const [volunteerDetailEventId, setVolunteerDetailEventId] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [emailAttendees, setEmailAttendees] = useState<AttendeeResponse[]>([]);
   const [emailAttendeesPagination, setEmailAttendeesPagination] =
@@ -118,13 +119,21 @@ const Dashboard: React.FC = () => {
       };
 
       // Build stats URL with event filter
-      const statsUrl = selectedEventId ? `/api/stats?event_id=${selectedEventId}` : "/api/stats";
+      const statsUrl = "/api/stats";
+      const statsParams: Record<string, string | number | boolean> = {};
+      if (selectedEventId) {
+        statsParams.event_id = selectedEventId;
+      }
 
       // Build volunteer summary URL with event filter
-      const volunteerSummaryUrl = selectedEventId ? `/api/volunteers/summary?event_id=${selectedEventId}` : "/api/volunteers/summary";
+      const volunteerSummaryUrl = "/api/volunteers/summary";
+      const volunteerParams: Record<string, string | number | boolean> = {};
+      if (selectedEventId) {
+        volunteerParams.event_id = selectedEventId;
+      }
 
       const [statsData, attendeesData, volunteersData] = await Promise.all([
-        apiClient.get<EventStats>(statsUrl),
+        apiClient.get<EventStats>(statsUrl, statsParams),
         apiClient.get<PaginatedResponse<AttendeeResponse>>(
           "/api/attendees",
           {
@@ -135,7 +144,7 @@ const Dashboard: React.FC = () => {
             ...(selectedEventId && { event_id: selectedEventId }),
           }
         ),
-        apiClient.get<any[]>(volunteerSummaryUrl),
+        apiClient.get<any[]>(volunteerSummaryUrl, volunteerParams),
       ]);
 
       setStats(statsData);
@@ -183,6 +192,11 @@ const Dashboard: React.FC = () => {
 
   const handleEventChange = (eventId: string) => {
     setSelectedEventId(eventId);
+    // Clear volunteer summary to prevent showing stale data while loading
+    setVolunteerSummary(null);
+    // Clear food breakdown to prevent showing stale data from previous event
+    setTicketsWithFood(0);
+    setTicketsWithoutFood(0);
     // Reset pagination when changing events
     setFilter((prev) => ({
       ...prev,
@@ -276,12 +290,19 @@ const Dashboard: React.FC = () => {
 
   const loadVolunteerAttendees = async (
     volunteerId: string,
-    offset: number = 0
+    offset: number = 0,
+    eventId?: string | null
   ) => {
+    // Use the explicitly passed eventId if provided, otherwise fall back to state
+    const resolvedEventId = eventId !== undefined ? eventId : volunteerDetailEventId;
     try {
       const response = await apiClient.get<PaginatedResponse<AttendeeResponse>>(
         `/api/volunteers/${volunteerId}/attendees`,
-        { limit: 50, offset }
+        { 
+          limit: 50, 
+          offset,
+          ...(resolvedEventId && { event_id: resolvedEventId })
+        }
       );
       setVolunteerAttendees(response.data);
       setVolunteerAttendeesPagination(response.pagination);
@@ -290,10 +311,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const loadVolunteerDetails = async (volunteerId: string) => {
+  const loadVolunteerDetails = async (volunteerId: string, eventId?: string | null) => {
+    // Use the explicitly passed eventId if provided, otherwise fall back to state
+    const resolvedEventId = eventId !== undefined ? eventId : volunteerDetailEventId;
     try {
       const response = await apiClient.get(
-        `/api/volunteers/${volunteerId}/details`
+        `/api/volunteers/${volunteerId}/details`,
+        { ...(resolvedEventId && { event_id: resolvedEventId }) }
       );
       setVolunteerDetails(response);
     } catch (error) {
@@ -303,9 +327,13 @@ const Dashboard: React.FC = () => {
 
   const handleVolunteerClick = async (volunteer: any) => {
     setSelectedVolunteer(volunteer);
+    // Default to the currently selected event in the dashboard
+    setVolunteerDetailEventId(selectedEventId);
+    // Pass selectedEventId directly — state update above is async and won't be
+    // reflected yet when the fetch functions run
     await Promise.all([
-      loadVolunteerDetails(volunteer.volunteer_id),
-      loadVolunteerAttendees(volunteer.volunteer_id),
+      loadVolunteerDetails(volunteer.volunteer_id, selectedEventId),
+      loadVolunteerAttendees(volunteer.volunteer_id, 0, selectedEventId),
     ]);
   };
 
@@ -316,11 +344,22 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleVolunteerDetailEventChange = (eventId: string) => {
+    setVolunteerDetailEventId(eventId);
+    if (selectedVolunteer) {
+      // Pass eventId directly — state update above is async and won't be
+      // reflected yet when the fetch functions run
+      loadVolunteerDetails(selectedVolunteer.volunteer_id, eventId);
+      loadVolunteerAttendees(selectedVolunteer.volunteer_id, 0, eventId);
+    }
+  };
+
   const handleBackToVolunteers = () => {
     setSelectedVolunteer(null);
     setVolunteerDetails(null);
     setVolunteerAttendees([]);
     setVolunteerAttendeesPagination(null);
+    setVolunteerDetailEventId(null);
   };
 
   const loadEmailAttendees = async (email: string, offset: number = 0) => {
@@ -372,6 +411,7 @@ const Dashboard: React.FC = () => {
     try {
       await apiClient.patch(`/api/auth/users/${volunteerId}/cleared-amount`, {
         cleared_amount: clearedAmount,
+        ...(selectedEventId && { event_id: selectedEventId }),
       });
 
       // Refresh the volunteer summary to show updated amounts
@@ -531,6 +571,8 @@ const Dashboard: React.FC = () => {
         {/* Tabbed Tables - Volunteers and Attendees */}
         <TabbedTables
           volunteerSummary={volunteerSummary}
+          selectedEventId={selectedEventId}
+          events={events}
           attendees={attendees}
           attendeesPagination={attendeesPagination}
           formatDate={formatDate}
@@ -546,6 +588,8 @@ const Dashboard: React.FC = () => {
           onVolunteerClick={handleVolunteerClick}
           onVolunteerAttendeesPageChange={handleVolunteerAttendeesPageChange}
           onBackToVolunteers={handleBackToVolunteers}
+          volunteerDetailEventId={volunteerDetailEventId}
+          onVolunteerDetailEventChange={handleVolunteerDetailEventChange}
           selectedEmail={selectedEmail}
           emailAttendees={emailAttendees}
           emailAttendeesPagination={emailAttendeesPagination}

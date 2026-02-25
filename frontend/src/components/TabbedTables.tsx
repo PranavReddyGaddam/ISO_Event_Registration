@@ -7,12 +7,15 @@ import { AttendeeResponse, PaginationMeta } from '../types';
 import { downloadCSV } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import ResendQrEmailModal from './ResendQrEmailModal';
+import { Event } from '../types/event';
 
 interface TabbedTablesProps {
   // Role-based permissions
   
   // Volunteers data
   volunteerSummary: any[] | null;
+  selectedEventId?: string | null;
+  events?: Event[];
   
   // Attendees data
   attendees: AttendeeResponse[];
@@ -32,6 +35,8 @@ interface TabbedTablesProps {
   onVolunteerClick: (volunteer: any) => void;
   onVolunteerAttendeesPageChange: (page: number) => void;
   onBackToVolunteers: () => void;
+  volunteerDetailEventId?: string | null;
+  onVolunteerDetailEventChange?: (eventId: string) => void;
   
   // Email drill-down data
   selectedEmail: string | null;
@@ -59,6 +64,8 @@ interface TabbedTablesProps {
 
 const TabbedTables: React.FC<TabbedTablesProps> = ({
   volunteerSummary,
+  selectedEventId,
+  events,
   attendees,
   attendeesPagination,
   formatDate,
@@ -74,6 +81,8 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
   onVolunteerClick,
   onVolunteerAttendeesPageChange,
   onBackToVolunteers,
+  volunteerDetailEventId,
+  onVolunteerDetailEventChange,
   selectedEmail,
   emailAttendees,
   emailAttendeesPagination,
@@ -111,7 +120,12 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
     try {
       const headers = getAuthHeaders();
       
-      await downloadCSV('/api/volunteers/summary/csv', undefined, headers);
+      // Build query parameters
+      const params: Record<string, string | number | boolean> = {};
+      if (selectedEventId) params.event_id = selectedEventId;
+      
+      const endpoint = `/api/volunteers/summary/csv${Object.keys(params).length > 0 ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]).toString()).toString() : ''}`;
+      await downloadCSV(endpoint, undefined, headers);
     } catch (error) {
       console.error('Failed to download CSV:', error);
       // You could add a toast notification here
@@ -201,7 +215,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
         {/* Header with back button */}
         <div className="px-4 sm:px-6 py-4 border-b border-white/20">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 flex-wrap gap-2">
               <button
                 onClick={onBackToVolunteers}
                 className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -211,6 +225,24 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                 </svg>
                 Back to Volunteers
               </button>
+              
+              {events && events.length > 0 && onVolunteerDetailEventChange && (
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="volunteer-detail-event" className="text-sm text-gray-600">Event:</label>
+                  <select
+                    id="volunteer-detail-event"
+                    value={volunteerDetailEventId || ''}
+                    onChange={(e) => onVolunteerDetailEventChange(e.target.value)}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Events</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>{ev.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
                   {selectedVolunteer.full_name || 'Unnamed Volunteer'}
@@ -1283,6 +1315,8 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
         isOpen={showResendModal}
         onClose={() => setShowResendModal(false)}
         email={selectedEmail || undefined}
+        events={events}
+        selectedEventId={selectedEventId}
       />
     </div>
   );

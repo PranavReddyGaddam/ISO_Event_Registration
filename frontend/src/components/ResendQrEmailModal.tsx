@@ -5,19 +5,25 @@
 import React, { useState } from 'react';
 import { resendQrEmail } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { Event } from '../types/event';
 
 interface ResendQrEmailModalProps {
   isOpen: boolean;
   onClose: () => void;
   email?: string; // Pre-filled email address
+  events?: Event[];
+  selectedEventId?: string | null;
 }
 
 const ResendQrEmailModal: React.FC<ResendQrEmailModalProps> = ({ 
   isOpen, 
   onClose, 
-  email: prefilledEmail = '' 
+  email: prefilledEmail = '',
+  events = [],
+  selectedEventId: preselectedEventId = null,
 }) => {
   const [email, setEmail] = useState(prefilledEmail);
+  const [eventId, setEventId] = useState<string>(preselectedEventId || '');
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const { getAuthHeaders } = useAuth();
@@ -26,9 +32,10 @@ const ResendQrEmailModal: React.FC<ResendQrEmailModalProps> = ({
   React.useEffect(() => {
     if (isOpen) {
       setEmail(prefilledEmail);
+      setEventId(preselectedEventId || '');
       setMessage(null);
     }
-  }, [isOpen, prefilledEmail]);
+  }, [isOpen, prefilledEmail, preselectedEventId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +50,7 @@ const ResendQrEmailModal: React.FC<ResendQrEmailModalProps> = ({
 
     try {
       const headers = getAuthHeaders();
-      const result = await resendQrEmail(email.trim(), headers);
+      const result = await resendQrEmail(email.trim(), headers, eventId || undefined);
       setMessage({ 
         type: 'success', 
         text: result.message 
@@ -108,10 +115,32 @@ const ResendQrEmailModal: React.FC<ResendQrEmailModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                This will resend QR codes for ALL registrations under this email address.
-              </p>
             </div>
+
+            {events.length > 0 && (
+              <div>
+                <label htmlFor="resend-event" className="block text-sm font-medium text-gray-700 mb-1">
+                  Event
+                </label>
+                <select
+                  id="resend-event"
+                  value={eventId}
+                  onChange={(e) => setEventId(e.target.value)}
+                  disabled={isSending}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">All Events</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>{ev.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {eventId
+                    ? 'Will resend QR codes for this event only.'
+                    : 'Will resend QR codes for all events.'}
+                </p>
+              </div>
+            )}
 
             {/* Message */}
             {message && (

@@ -303,22 +303,58 @@ async def update_cleared_amount(
                 detail="Can only update cleared amount for volunteers"
             )
         
-        # Get current cleared amount and add the new amount (incremental clearing)
+        if cleared_data.event_id:
+            # Per-event clearing: upsert into volunteer_event_cleared_amounts
+            existing_resp = (
+                supabase_client.service_client
+                .table("volunteer_event_cleared_amounts")
+                .select("id, cleared_amount")
+                .eq("volunteer_id", user_id)
+                .eq("event_id", cleared_data.event_id)
+                .execute()
+            )
+            existing = existing_resp.data[0] if existing_resp.data else None
+            current_event_cleared = float(existing["cleared_amount"]) if existing else 0.0
+            new_event_cleared = current_event_cleared + cleared_data.cleared_amount
+
+            if existing:
+                supabase_client.service_client.table("volunteer_event_cleared_amounts").update(
+                    {"cleared_amount": new_event_cleared, "updated_by": current_user.user_id}
+                ).eq("id", existing["id"]).execute()
+            else:
+                supabase_client.service_client.table("volunteer_event_cleared_amounts").insert({
+                    "volunteer_id": user_id,
+                    "event_id": cleared_data.event_id,
+                    "cleared_amount": new_event_cleared,
+                    "updated_by": current_user.user_id,
+                }).execute()
+
+            return UserResponse(
+                id=user["id"],
+                email=user["email"],
+                full_name=user["full_name"],
+                role=user["role"],
+                is_active=user["is_active"],
+                cleared_amount=new_event_cleared,
+                created_at=user["created_at"],
+                last_login=user.get("last_login")
+            )
+
+        # No event_id: fall back to updating the global cleared_amount on users table
         current_cleared = float(user.get("cleared_amount", 0.0))
         new_total_cleared = current_cleared + cleared_data.cleared_amount
-        
-        # Update the cleared amount with the new total
+
         updated_user = await supabase_client.update_user_cleared_amount(
             user_id=user_id,
             cleared_amount=new_total_cleared
         )
-        
+
         if not updated_user:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to update cleared amount"
             )
-        
+
         return UserResponse(
             id=updated_user["id"],
             email=updated_user["email"],

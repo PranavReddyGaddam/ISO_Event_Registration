@@ -813,13 +813,16 @@ class SupabaseClient:
             logger.error(f"Error cleaning up expired reset tokens: {e}")
             return 0
 
-    async def get_attendees_with_qr_codes_by_email(self, email: str) -> List[Dict[str, Any]]:
+    async def get_attendees_with_qr_codes_by_email(self, email: str, event_id: str = None) -> List[Dict[str, Any]]:
         """Get all attendees for a specific email with QR code data."""
         try:
-            response = self.service_client.table("attendees").select(
+            query = self.service_client.table("attendees").select(
                 "id, name, email, phone, ticket_quantity, total_price, payment_mode, "
                 "created_at, checked_in_at, created_by, qr_code_id, qr_code_url, is_checked_in"
-            ).eq("email", email).order("created_at", desc=True).execute()
+            ).eq("email", email)
+            if event_id:
+                query = query.eq("event_id", event_id)
+            response = query.order("created_at", desc=True).execute()
             
             if not response.data:
                 logger.info(f"No attendees found for email: {email}")

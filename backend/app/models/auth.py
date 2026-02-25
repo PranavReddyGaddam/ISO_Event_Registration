@@ -103,7 +103,8 @@ class UserUpdate(BaseModel):
 class UpdateClearedAmount(BaseModel):
     """Model for updating cleared amount."""
     cleared_amount: float
-    
+    event_id: Optional[str] = None
+
     @validator("cleared_amount")
     def validate_cleared_amount(cls, v: float) -> float:
         """Validate cleared amount is non-negative."""
