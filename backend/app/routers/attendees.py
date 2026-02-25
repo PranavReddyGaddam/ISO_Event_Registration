@@ -63,10 +63,29 @@ async def get_volunteer_details(
             event_id=event_id
         )
         
+        # Use per-event cleared amount when event_id is provided, else fall back to global
+        if event_id and str(event_id).strip():
+            try:
+                eca_resp = (
+                    supabase_client.service_client
+                    .table("volunteer_event_cleared_amounts")
+                    .select("cleared_amount")
+                    .eq("volunteer_id", volunteer_id)
+                    .eq("event_id", event_id)
+                    .execute()
+                )
+                rows = eca_resp.data or []
+                row = rows[0] if rows else None
+                cleared_amount = float(row["cleared_amount"] or 0) if row else 0.0
+            except Exception as e:
+                logger.warning(f"Could not fetch per-event cleared amount: {e}")
+                cleared_amount = 0.0
+        else:
+            cleared_amount = float(volunteer.get("cleared_amount", 0.0) or 0.0)
+        
         # Calculate financial summary
         total_sales = sum(float(attendee.get("total_price", 0) or 0) for attendee in all_attendees)
-        cleared_amount = float(volunteer.get("cleared_amount", 0.0) or 0.0)
-        pending_amount = total_sales - cleared_amount
+        pending_amount = max(0.0, total_sales - cleared_amount)
         
         # Calculate payment breakdown
         cash_amount = 0.0
