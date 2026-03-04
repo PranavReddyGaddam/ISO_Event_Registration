@@ -238,12 +238,13 @@ async def get_volunteer_summary(
 ):
     """Get all volunteers with their registration statistics, optionally filtered by event."""
     try:
-        # First, get all sales team users (volunteers, president, finance director)
+        # First, get all sales team users (volunteers, president, finance director) who are active
         volunteers_resp = (
             supabase_client.service_client
             .table("users")
             .select("id, full_name, email, team_role, role, cleared_amount")
             .in_("role", ["volunteer", "president", "finance_director"])
+            .eq("is_active", True)
             .execute()
         )
         volunteers = volunteers_resp.data or []

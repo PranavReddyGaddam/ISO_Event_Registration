@@ -97,7 +97,20 @@ def decode_access_token(token: str) -> TokenData:
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> TokenData:
     """Get current authenticated user from JWT token."""
     token = credentials.credentials
-    return decode_access_token(token)
+    token_data = decode_access_token(token)
+    
+    # Check if user is still active in database
+    from app.utils.supabase_client import supabase_client
+    user_data = await supabase_client.get_user_by_id(token_data.user_id)
+    
+    if not user_data or not user_data.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is disabled",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return token_data
 
 
 async def get_current_president(current_user: TokenData = Depends(get_current_user)) -> TokenData:
