@@ -180,6 +180,82 @@ async def get_volunteer_attendees(
             detail="Failed to retrieve volunteer attendees"
         )
 
+
+@router.get("/volunteers/{volunteer_id}/attendees/csv")
+async def download_volunteer_attendees_csv(
+    volunteer_id: str,
+    event_id: Optional[str] = Query(None, description="Filter by specific event ID"),
+    current_user: TokenData = Depends(get_current_president_or_finance_director)
+):
+    """Download CSV of all attendees registered by a specific volunteer, optionally filtered by event."""
+    try:
+        # Get all attendees created by this volunteer (no pagination limit)
+        attendees, _ = await supabase_client.get_attendees_by_volunteer(
+            volunteer_id=volunteer_id,
+            limit=10000,  # Get all attendees
+            offset=0,
+            event_id=event_id
+        )
+        
+        # Filter out guests - only include regular attendees
+        regular_attendees = [a for a in attendees if not a.get('is_guest', False)]
+        
+        # Prepare CSV data
+        csv_data = []
+        csv_data.append(['Name', 'Email', 'Phone', 'Ticket Quantity', 'Payment Mode', 'Total Price', 'Checked In'])
+        
+        for attendee in regular_attendees:
+            csv_data.append([
+                attendee.get('name', ''),
+                attendee.get('email', ''),
+                attendee.get('phone', ''),
+                attendee.get('ticket_quantity', 0),
+                attendee.get('payment_mode', ''),
+                attendee.get('total_price', 0),
+                'Yes' if attendee.get('is_checked_in', False) else 'No'
+            ])
+        
+        # Convert to CSV string
+        import io
+        import csv
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerows(csv_data)
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Get volunteer name for filename
+        volunteer = await supabase_client.get_user_by_id(volunteer_id)
+        volunteer_name = volunteer.get('full_name', 'volunteer').replace(' ', '_')
+        
+        # Get event name if filtering by event
+        event_suffix = ''
+        if event_id:
+            event_response = supabase_client.client.table("events").select("name").eq("id", event_id).execute()
+            if event_response.data:
+                event_name = event_response.data[0]['name'].replace(' ', '_')
+                event_suffix = f'_{event_name}'
+        
+        filename = f'{volunteer_name}_attendees{event_suffix}.csv'
+        
+        return Response(
+            content=csv_content,
+            media_type='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename="{filename}"'
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading volunteer attendees CSV: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to download volunteer attendees CSV"
+        )
+
+
 @router.get("/attendees/by-email/{email}", response_model=PaginatedResponse[AttendeeResponse])
 async def get_attendees_by_email(
     email: str,
@@ -484,6 +560,7 @@ async def download_volunteer_summary_csv(current_user: TokenData = Depends(get_c
 async def download_attendees_csv(
     search: str = Query(""),
     checked_in: Optional[bool] = Query(None),
+    event_id: Optional[str] = Query(None, description="Filter by specific event ID"),
     limit: int = Query(1000, le=10000),  # Allow up to 10,000 records
     offset: int = Query(0, ge=0),
     current_user: TokenData = Depends(get_current_president_or_finance_director)
@@ -499,6 +576,9 @@ async def download_attendees_csv(
         
         if checked_in is not None:
             filter_params["checked_in"] = checked_in
+        
+        if event_id is not None:
+            filter_params["event_id"] = event_id
         
         # Get attendees data using the same logic as the regular endpoint
         attendees_resp = supabase_client.client.table("attendees").select(
@@ -517,6 +597,9 @@ async def download_attendees_csv(
                 attendees_resp = attendees_resp.not_.is_("checked_in_at", "null")
             else:
                 attendees_resp = attendees_resp.is_("checked_in_at", "null")
+        
+        if event_id is not None:
+            attendees_resp = attendees_resp.eq("event_id", event_id)
         
         # Apply pagination
         attendees_resp = attendees_resp.range(offset, offset + limit - 1)

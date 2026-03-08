@@ -151,7 +151,7 @@ class ApiClient {
     });
   }
 
-  public async downloadFile(url: string, headers?: Record<string, string>): Promise<Blob> {
+  public async downloadFile(url: string, headers?: Record<string, string>): Promise<{ blob: Blob; filename?: string }> {
     const fullUrl = new URL(url, this.config.baseURL);
     const requestInit: RequestInit = {
       method: 'GET',
@@ -177,7 +177,22 @@ class ApiClient {
         throw new ApiClientError(errorData.detail, response.status);
       }
 
-      return await response.blob();
+      // Extract filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      console.log('DownloadFile - Content-Disposition:', contentDisposition);
+      let filename: string | undefined;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        console.log('DownloadFile - Filename match:', filenameMatch);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+          console.log('DownloadFile - Extracted filename:', filename);
+        }
+      }
+
+      const blob = await response.blob();
+      return { blob, filename };
     } catch (error) {
       if (error instanceof ApiClientError) {
         throw error;
@@ -223,22 +238,36 @@ export const deleteResource = async <T>(endpoint: string): Promise<T> => {
   return apiClient.delete<T>(endpoint);
 };
 
-export const downloadCSV = async (endpoint: string, filename?: string, headers?: Record<string, string>): Promise<void> => {
-  const blob = await apiClient.downloadFile(endpoint, headers);
+export const downloadCSV = async (endpoint: string, headers?: Record<string, string>): Promise<void> => {
+  const fullUrl = new URL(endpoint, apiClient['config'].baseURL);
+  const requestInit: RequestInit = {
+    method: 'GET',
+    headers: {
+      ...apiClient['config'].headers,
+      ...headers,
+    },
+  };
+
+  const response = await fetch(fullUrl.toString(), requestInit);
   
-  // Create download link
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = filename || `download_${Date.now()}.csv`;
+  link.download = `download_${Date.now()}.csv`;
+  link.style.display = 'none';
   
-  // Trigger download
   document.body.appendChild(link);
   link.click();
   
-  // Cleanup
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
+  setTimeout(() => {
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }, 100);
 };
 
 export const resendQrEmail = async (email: string, headers?: Record<string, string>, eventId?: string): Promise<{ message: string; email: string; registrations_count: number }> => {

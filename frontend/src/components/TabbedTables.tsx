@@ -125,7 +125,7 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
       if (selectedEventId) params.event_id = selectedEventId;
       
       const endpoint = `/api/volunteers/summary/csv${Object.keys(params).length > 0 ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]).toString()).toString() : ''}`;
-      await downloadCSV(endpoint, undefined, headers);
+      await downloadCSV(endpoint, headers);
     } catch (error) {
       console.error('Failed to download CSV:', error);
       // You could add a toast notification here
@@ -145,15 +145,36 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (filter.checked_in !== undefined) params.append('checked_in', filter.checked_in.toString());
+      if (selectedEventId) params.append('event_id', selectedEventId);
       params.append('limit', '10000'); // Get all records
       
       const endpoint = `/api/attendees/csv${params.toString() ? '?' + params.toString() : ''}`;
-      await downloadCSV(endpoint, undefined, headers);
+      await downloadCSV(endpoint, headers);
     } catch (error) {
       console.error('Failed to download attendees CSV:', error);
       // You could add a toast notification here
     } finally {
       setIsDownloadingAttendeesCSV(false);
+    }
+  };
+
+  const handleDownloadVolunteerAttendees = async () => {
+    if (!selectedVolunteer) return;
+    
+    try {
+      const headers = getAuthHeaders();
+      
+      // Build query parameters with event filter
+      const params = new URLSearchParams();
+      if (volunteerDetailEventId) {
+        params.append('event_id', volunteerDetailEventId);
+      }
+      
+      const endpoint = `/api/volunteers/${selectedVolunteer.volunteer_id}/attendees/csv${params.toString() ? '?' + params.toString() : ''}`;
+      await downloadCSV(endpoint, headers);
+    } catch (error) {
+      console.error('Failed to download volunteer attendees CSV:', error);
+      // You could add a toast notification here
     }
   };
 
@@ -242,6 +263,16 @@ const TabbedTables: React.FC<TabbedTablesProps> = ({
                   </select>
                 </div>
               )}
+              
+              <button
+                onClick={handleDownloadVolunteerAttendees}
+                className="flex items-center px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download Tickets
+              </button>
               
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
