@@ -831,6 +831,7 @@ async def send_resend_email_with_pdf_task(
 async def register_attendee(
     attendee: AttendeeCreate,
     background_tasks: BackgroundTasks,
+    event_id: Optional[str] = Query(None, description="Event ID for registration"),
     current_user: TokenData = Depends(get_current_volunteer_president_or_finance_director)
 ):
     """Register a new attendee and generate QR code.
@@ -842,8 +843,11 @@ async def register_attendee(
         # Allow multiple registrations with the same email
         # No duplicate checking is performed - users can register multiple times with same email
         
-        # Get default event ID (assuming single event for now)
-        event_response = supabase_client.client.table("events").select("*").order("updated_at", desc=True).limit(1).execute()
+        # Get event - use provided event_id or default to most recent
+        if event_id:
+            event_response = supabase_client.client.table("events").select("*").eq("id", event_id).execute()
+        else:
+            event_response = supabase_client.client.table("events").select("*").order("updated_at", desc=True).limit(1).execute()
         if not event_response.data:
             raise HTTPException(
                 status_code=500,

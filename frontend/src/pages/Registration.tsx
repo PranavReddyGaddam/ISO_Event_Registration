@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AttendeeCreate, AttendeeResponse, FormErrors, ApiStatus, TicketCalculationResponse } from '../types';
 import { attendeeRegistrationValidator, formatPhoneNumber } from '../utils/validation';
 import { useApiClient } from '../hooks/useApiClient';
@@ -12,6 +13,7 @@ import VolunteerLeaderboard from '../components/VolunteerLeaderboard';
 import VolunteerRankDisplay from '../components/VolunteerRankDisplay';
 
 const Registration: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [formData, setFormData] = useState<AttendeeCreate>({
     name: '',
     email: '',
@@ -150,7 +152,12 @@ const Registration: React.FC = () => {
         ...formData,
         is_guest: isGuest
       };
-      const response = await apiClient.post<AttendeeResponse>('/api/register', registrationData);
+      
+      // Get event_id from URL params if available
+      const eventId = searchParams.get('event_id');
+      const registerUrl = eventId ? `/api/register?event_id=${eventId}` : '/api/register';
+      
+      const response = await apiClient.post<AttendeeResponse>(registerUrl, registrationData);
       
       // Then upload transaction screenshot if Zelle payment
       if (formData.payment_mode === 'zelle' && transactionScreenshot) {
