@@ -139,13 +139,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const user = authState.user;
     if (!user) return false;
     
-    // Presidents, Directors, and Secretaries always have access regardless of team_role
-    if (user.role === UserRole.PRESIDENT || user.team_role === 'Director' || user.team_role === 'Secretary') {
+    // Presidents always have access regardless of team_role
+    if (user.role === UserRole.PRESIDENT) {
       return true;
     }
     
-    const allowedRoles = ['Director', 'Secretary', 'President', 'Vice President'];
-    return allowedRoles.includes(user.team_role || '');
+    // Normalize team_role for case-insensitive comparison
+    const normalizedTeamRole = (user.team_role || '').trim().toLowerCase();
+    
+    // Directors and Secretaries always have access (case-insensitive)
+    if (normalizedTeamRole === 'director' || normalizedTeamRole === 'secretary') {
+      return true;
+    }
+    
+    const allowedRoles = ['director', 'secretary', 'president', 'vice president'];
+    return allowedRoles.includes(normalizedTeamRole);
   };
 
   const getAuthHeaders = (): Record<string, string> => {

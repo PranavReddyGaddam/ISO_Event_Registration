@@ -99,6 +99,7 @@ async def login(user_credentials: UserLogin):
             email=user_data["email"],
             full_name=user_data["full_name"],
             role=user_data["role"],
+            team_role=user_data.get("team_role"),
             is_active=user_data["is_active"],
             created_at=user_data["created_at"],
             last_login=user_data.get("last_login")

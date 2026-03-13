@@ -19,6 +19,7 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str
     role: UserRole
+    team_role: Optional[str] = None
     is_active: bool = True
     cleared_amount: float = 0.0
     
