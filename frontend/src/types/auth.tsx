@@ -18,6 +18,7 @@ export interface UserResponse {
   email: string;
   full_name: string;
   role: UserRole;
+  team_role?: string;
   is_active: boolean;
   created_at: string;
   last_login?: string;

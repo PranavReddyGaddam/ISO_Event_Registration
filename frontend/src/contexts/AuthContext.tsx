@@ -12,6 +12,7 @@ interface AuthContextType {
   isVolunteer: () => boolean;
   isFinanceDirector: () => boolean;
   hasAccess: (allowedRoles: string[]) => boolean;
+  hasVolunteerRegistrationAccess: () => boolean;
   getAuthHeaders: () => Record<string, string>;
 }
 
@@ -134,6 +135,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return allowedRoles.includes(user.role);
   };
 
+  const hasVolunteerRegistrationAccess = (): boolean => {
+    const user = authState.user;
+    if (!user) return false;
+    
+    // Presidents, Directors, and Secretaries always have access regardless of team_role
+    if (user.role === UserRole.PRESIDENT || user.team_role === 'Director' || user.team_role === 'Secretary') {
+      return true;
+    }
+    
+    const allowedRoles = ['Director', 'Secretary', 'President', 'Vice President'];
+    return allowedRoles.includes(user.team_role || '');
+  };
+
   const getAuthHeaders = (): Record<string, string> => {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
@@ -157,6 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isVolunteer,
     isFinanceDirector,
     hasAccess,
+    hasVolunteerRegistrationAccess,
     getAuthHeaders
   };
 

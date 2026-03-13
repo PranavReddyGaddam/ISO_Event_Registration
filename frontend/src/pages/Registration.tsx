@@ -34,7 +34,7 @@ const Registration: React.FC = () => {
   const [isGuest, setIsGuest] = useState(false);
 
   const apiClient = useApiClient();
-  const { isPresident, isAuthenticated, isLoading } = useAuth();
+  const { isPresident, isAuthenticated, isLoading, hasVolunteerRegistrationAccess, logout } = useAuth();
 
 
   const calculatePrice = async (quantity: number, foodOption: 'with_food' | 'without_food', paymentMode: 'cash' | 'zelle' = 'cash') => {
@@ -222,6 +222,58 @@ const Registration: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
             </div>
             <p className="mt-4 text-gray-600">Loading registration form...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied message for users without volunteer registration access
+  if (isAuthenticated() && !hasVolunteerRegistrationAccess()) {
+    return (
+      <div className="min-h-screen py-4 px-4 sm:py-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-sm mx-auto sm:max-w-md">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 p-4 sm:p-6 text-center">
+            <div className="mb-6">
+              <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-500/20 backdrop-blur-sm border border-red-400/30 mb-4">
+                <svg className="h-6 w-6 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Ticket Sales Closed</h1>
+              <p className="text-sm sm:text-base text-gray-700 mb-4">
+                Ticket sales have closed for volunteers, please contact Pulkit and Kalpesh for any ticket sales.
+              </p>
+            </div>
+
+            <div className="bg-red-50/50 backdrop-blur-sm rounded-lg border border-red-200/30 p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-red-800 mb-1">Contact Information</h3>
+                  <p className="text-xs text-red-700">
+                    For ticket sales assistance, please reach out to:<br />
+                    <strong>Pulkit</strong> and <strong>Kalpesh</strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  logout();
+                  window.location.href = '/login';
+                }}
+                className="block w-full bg-blue-500/20 backdrop-blur-sm text-gray-900 py-3 px-4 sm:py-4 rounded-lg hover:bg-blue-500/30 focus:outline-none focus:ring-2 focus:ring-blue-400/50 border border-blue-400/30 transition-all duration-200 text-center text-sm sm:text-base font-medium"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </div>
