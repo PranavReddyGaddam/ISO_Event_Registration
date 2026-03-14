@@ -8,8 +8,8 @@ export const Navigation: React.FC = () => {
   const currentUser = getCurrentUser();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Check-in is disabled for now
-  const isCheckinEnabled = false;
+  // Check-in is now enabled
+  const isCheckinEnabled = true;
 
   const isActivePath = (path: string): boolean => {
     return location.pathname === path || 

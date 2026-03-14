@@ -7,8 +7,8 @@ import { AttendeeResponse, ApiStatus } from '../types';
 import { useApiClient } from '../hooks/useApiClient';
 
 const CheckIn: React.FC = () => {
-  // Check-in is disabled for now
-  const isCheckinEnabled = false;
+  // Check-in is now enabled
+  const isCheckinEnabled = true;
 
   const [status, setStatus] = useState<ApiStatus>(ApiStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
