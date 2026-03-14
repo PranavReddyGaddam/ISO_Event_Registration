@@ -144,6 +144,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
     }
     
+    // TEMPORARY: Specific emails for registration desk access (March 14, 2026)
+    const temporaryAccessEmails = [
+      'eashita.bhardwaj@sjsu.edu',
+      'mrunalsuhas.kotkar@sjsu.edu',
+      'zeniadilip.malani@sjsu.edu',
+      'pratiksha.kaushik@sjsu.edu',
+      'vanshikahardik.shah@sjsu.edu',
+      'mannat.bhargavaa@gmail.com',
+      'raghav.sareen@sjsu.edu',
+      'mithil.patel@sjsu.edu',
+      'mishaumeshkumar.patel@sjsu.edu',
+      'diyaashok.jhawar@sjsu.edu',
+      'rohan.mansukhani@sjsu.edu',
+      'zohazubair.dhanani@sjsu.edu',
+      'sohamsachin.joshi@sjsu.edu',
+      'snehil.raut@sjsu.edu'
+    ];
+    
+    if (temporaryAccessEmails.includes(user.email)) {
+      return true;
+    }
+    
     // Normalize team_role for case-insensitive comparison
     const normalizedTeamRole = (user.team_role || '').trim().toLowerCase();
     
